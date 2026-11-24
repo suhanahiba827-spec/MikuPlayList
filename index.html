@@ -604,6 +604,145 @@
         let coverTargetTrackId = null;
         let defaultCustomCover = null;
         const STORAGE_KEY = 'miku_synth_01_saved_state_v1';
+        const AUDIO_DB_NAME = 'miku_synth_01_audio_db';
+        const AUDIO_DB_STORE = 'audio_files';
+        let audioDbPromise = null;
+
+        function openAudioDatabase() {
+            if (audioDbPromise) return audioDbPromise;
+            audioDbPromise = new Promise(function (resolve) {
+                try {
+                    if (!window.indexedDB) {
+                        resolve(null);
+                        return;
+                    }
+                    const req = window.indexedDB.open(AUDIO_DB_NAME, 1);
+                    req.onupgradeneeded = function (ev) {
+                        const db = ev.target.result;
+                        if (!db.objectStoreNames.contains(AUDIO_DB_STORE)) {
+                            db.createObjectStore(AUDIO_DB_STORE);
+                        }
+                    };
+                    req.onsuccess = function (ev) {
+                        resolve(ev.target.result);
+                    };
+                    req.onerror = function () {
+                        resolve(null);
+                    };
+                } catch (err) {
+                    resolve(null);
+                }
+            });
+            return audioDbPromise;
+        }
+
+        function saveAudioBlobToDB(trackId, blob) {
+            return openAudioDatabase().then(function (db) {
+                if (!db || !trackId || !blob) return;
+                return new Promise(function (resolve) {
+                    try {
+                        const tx = db.transaction(AUDIO_DB_STORE, 'readwrite');
+                        const store = tx.objectStore(AUDIO_DB_STORE);
+                        store.put(blob, trackId);
+                        tx.oncomplete = function () { resolve(); };
+                        tx.onerror = function () { resolve(); };
+                    } catch (err) {
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        function deleteAudioBlobFromDB(trackId) {
+            return openAudioDatabase().then(function (db) {
+                if (!db || !trackId) return;
+                return new Promise(function (resolve) {
+                    try {
+                        const tx = db.transaction(AUDIO_DB_STORE, 'readwrite');
+                        const store = tx.objectStore(AUDIO_DB_STORE);
+                        store.delete(trackId);
+                        tx.oncomplete = function () { resolve(); };
+                        tx.onerror = function () { resolve(); };
+                    } catch (err) {
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        function clearAllAudioBlobsFromDB() {
+            return openAudioDatabase().then(function (db) {
+                if (!db) return;
+                return new Promise(function (resolve) {
+                    try {
+                        const tx = db.transaction(AUDIO_DB_STORE, 'readwrite');
+                        const store = tx.objectStore(AUDIO_DB_STORE);
+                        store.clear();
+                        tx.oncomplete = function () { resolve(); };
+                        tx.onerror = function () { resolve(); };
+                    } catch (err) {
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        function restoreSavedAudioBlobs() {
+            return openAudioDatabase().then(function (db) {
+                if (!db) return;
+                return new Promise(function (resolve) {
+                    try {
+                        const tx = db.transaction(AUDIO_DB_STORE, 'readonly');
+                        const store = tx.objectStore(AUDIO_DB_STORE);
+                        const getAllKeysReq = store.getAllKeys();
+                        getAllKeysReq.onsuccess = function () {
+                            const keys = getAllKeysReq.result || [];
+                            const blobMap = {};
+                            let pending = keys.length;
+                            if (!pending) {
+                                resolve(blobMap);
+                                return;
+                            }
+                            keys.forEach(function (key) {
+                                const getReq = store.get(key);
+                                getReq.onsuccess = function () {
+                                    if (getReq.result) {
+                                        blobMap[String(key)] = getReq.result;
+                                    }
+                                    pending -= 1;
+                                    if (pending <= 0) resolve(blobMap);
+                                };
+                                getReq.onerror = function () {
+                                    pending -= 1;
+                                    if (pending <= 0) resolve(blobMap);
+                                };
+                            });
+                        };
+                        getAllKeysReq.onerror = function () { resolve({}); };
+                    } catch (err) {
+                        resolve({});
+                    }
+                });
+            }).then(function (blobMap) {
+                if (!blobMap) return;
+                let restoredAny = false;
+                playlists.forEach(function (pl) {
+                    (pl.tracks || []).forEach(function (track) {
+                        const blob = blobMap[String(track.id)];
+                        if (blob) {
+                            if (track.src && track.src.indexOf('blob:') === 0) {
+                                try { URL.revokeObjectURL(track.src); } catch (e) {}
+                            }
+                            track.src = URL.createObjectURL(blob);
+                            restoredAny = true;
+                        }
+                    });
+                });
+                if (restoredAny) {
+                    loadTrack(getCurrentTrackIndex(), false);
+                }
+            });
+        }
 
         function saveUserPreferences() {
             try {
@@ -668,15 +807,13 @@
                             id: pl.id || ('pl-' + pIdx),
                             name: pl.name || 'Playlist',
                             currentIndex: typeof pl.currentIndex === 'number' ? pl.currentIndex : 0,
-                            tracks: Array.isArray(pl.tracks) ? pl.tracks.filter(function (t) {
-                                return Boolean(t && t.src);
-                            }).map(function (t) {
+                            tracks: Array.isArray(pl.tracks) ? pl.tracks.map(function (t) {
                                 return {
                                     id: t.id,
                                     title: t.title || 'Untitled Track',
                                     artist: t.artist || 'Unknown Artist',
                                     duration: t.duration || 0,
-                                    src: t.src,
+                                    src: t.src || '',
                                     cover: t.cover || createDefaultCoverSVG(t.title || 'TRACK', 'SAVED AUDIO', '#0284C7', '#38BDF8', '01')
                                 };
                             }) : []
@@ -1295,6 +1432,8 @@
                     cover: defaultCustomCover || createDefaultCoverSVG(title, 'LOCAL AUDIO', '#0284C7', '#38BDF8', numLabel)
                 };
 
+                saveAudioBlobToDB(trackId, file);
+
                 // Probe audio metadata duration safely
                 const probe = new Audio();
                 probe.preload = 'metadata';
@@ -1389,6 +1528,7 @@
                 if (t.src && t.src.indexOf('blob:') === 0) {
                     try { URL.revokeObjectURL(t.src); } catch (e) {}
                 }
+                deleteAudioBlobFromDB(t.id);
             });
             playlists = playlists.filter(function (p) {
                 return p.id !== target.id;
@@ -1555,6 +1695,9 @@
             if (removed && removed.src && removed.src.indexOf('blob:') === 0) {
                 try { URL.revokeObjectURL(removed.src); } catch (e) {}
             }
+            if (removed && removed.id) {
+                deleteAudioBlobFromDB(removed.id);
+            }
             const wasPlaying = isPlaying && idx === currentIndex;
             playlist.splice(idx, 1);
 
@@ -1589,6 +1732,7 @@
                 if (t.src && t.src.indexOf('blob:') === 0) {
                     try { URL.revokeObjectURL(t.src); } catch (e) {}
                 }
+                deleteAudioBlobFromDB(t.id);
             });
             activePl.tracks = [];
             activePl.currentIndex = 0;
@@ -2046,6 +2190,7 @@
             loadSavedPreferences();
             resizeVisualizerCanvas();
             loadTrack(getCurrentTrackIndex(), false);
+            restoreSavedAudioBlobs();
             requestAnimationFrame(drawVisualizer);
         });
     </script>
