@@ -179,9 +179,6 @@
                         <h1 class="font-mono-tech text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
                             MIKU<span class="text-[#0284C7]">.SYNTH</span> <span class="text-slate-400 font-normal">//</span> <span class="text-[#0369A1]">01</span>
                         </h1>
-                        <span class="text-xs px-2.5 py-0.5 rounded-full bg-sky-50 text-[#0284C7] border border-sky-200 font-medium">
-                            &#10024; Sky &amp; White
-                        </span>
                     </div>
                     <p class="text-xs sm:text-sm text-slate-600 mt-0.5">
                         Import your own songs, customize every track's cover art, and vibe with Miku.
@@ -606,6 +603,158 @@
         let editingTrackId = null;
         let coverTargetTrackId = null;
         let defaultCustomCover = null;
+        const STORAGE_KEY = 'miku_synth_01_saved_state_v1';
+
+        function saveUserPreferences() {
+            try {
+                const activePl = getActivePlaylist();
+                const bgStyle = document.body.style.background || '';
+                const panelAlpha = getComputedStyle(document.documentElement).getPropertyValue('--panel-alpha').trim() || '0.88';
+                const mikuLeft = chibiMikuWidget && chibiMikuWidget.style.left && chibiMikuWidget.style.left !== 'auto' ? chibiMikuWidget.style.left : null;
+                const mikuTop = chibiMikuWidget && chibiMikuWidget.style.top && chibiMikuWidget.style.top !== 'auto' ? chibiMikuWidget.style.top : null;
+                const customMikuGif = mikuGifImg && mikuGifImg.src && mikuGifImg.src.indexOf('data:') === 0 ? mikuGifImg.src : null;
+
+                const serializedPlaylists = playlists.map(function (pl) {
+                    return {
+                        id: pl.id,
+                        name: pl.name,
+                        currentIndex: pl.currentIndex || 0,
+                        tracks: (pl.tracks || []).map(function (t) {
+                            return {
+                                id: t.id,
+                                title: t.title,
+                                artist: t.artist,
+                                duration: t.duration || 0,
+                                src: t.src && t.src.indexOf('blob:') !== 0 ? t.src : null,
+                                cover: t.cover || null
+                            };
+                        })
+                    };
+                });
+
+                const payload = {
+                    playlists: serializedPlaylists,
+                    activePlaylistId: activePl.id,
+                    isShuffle: isShuffle,
+                    loopMode: loopMode,
+                    volume: htmlAudio.volume,
+                    defaultCustomCover: defaultCustomCover,
+                    background: bgStyle,
+                    panelAlpha: panelAlpha,
+                    gradColor1: gradColor1 ? gradColor1.value : '#38BDF8',
+                    gradColor2: gradColor2 ? gradColor2.value : '#FFFFFF',
+                    gradAngle: gradAngleSlider ? gradAngleSlider.value : '135',
+                    mikuLeft: mikuLeft,
+                    mikuTop: mikuTop,
+                    customMikuGif: customMikuGif
+                };
+
+                window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+            } catch (err) {
+                // Ignore storage quota or private mode errors safely
+            }
+        }
+
+        function loadSavedPreferences() {
+            try {
+                const raw = window.localStorage.getItem(STORAGE_KEY);
+                if (!raw) return;
+                const data = JSON.parse(raw);
+                if (!data || typeof data !== 'object') return;
+
+                if (Array.isArray(data.playlists) && data.playlists.length) {
+                    playlists = data.playlists.map(function (pl, pIdx) {
+                        return {
+                            id: pl.id || ('pl-' + pIdx),
+                            name: pl.name || 'Playlist',
+                            currentIndex: typeof pl.currentIndex === 'number' ? pl.currentIndex : 0,
+                            tracks: Array.isArray(pl.tracks) ? pl.tracks.filter(function (t) {
+                                return Boolean(t && t.src);
+                            }).map(function (t) {
+                                return {
+                                    id: t.id,
+                                    title: t.title || 'Untitled Track',
+                                    artist: t.artist || 'Unknown Artist',
+                                    duration: t.duration || 0,
+                                    src: t.src,
+                                    cover: t.cover || createDefaultCoverSVG(t.title || 'TRACK', 'SAVED AUDIO', '#0284C7', '#38BDF8', '01')
+                                };
+                            }) : []
+                        };
+                    });
+                }
+
+                if (data.activePlaylistId && playlists.some(function (p) { return p.id === data.activePlaylistId; })) {
+                    activePlaylistId = data.activePlaylistId;
+                }
+
+                if (typeof data.isShuffle === 'boolean') {
+                    isShuffle = data.isShuffle;
+                    if (isShuffle) {
+                        shuffleBtn.classList.remove('bg-white', 'text-slate-600', 'border-sky-200');
+                        shuffleBtn.classList.add('bg-sky-100', 'text-[#0369A1]', 'border-sky-300');
+                    }
+                }
+
+                if (data.loopMode === 'all' || data.loopMode === 'one' || data.loopMode === 'off') {
+                    loopMode = data.loopMode;
+                    if (loopMode === 'one') {
+                        loopOneDot.classList.remove('hidden');
+                        loopBtn.title = 'Loop Mode: Loop One';
+                    } else if (loopMode === 'off') {
+                        loopOneDot.classList.add('hidden');
+                        loopBtn.classList.remove('bg-sky-100', 'text-[#0369A1]', 'border-sky-300');
+                        loopBtn.classList.add('bg-white', 'text-slate-600', 'border-sky-200');
+                        loopBtn.title = 'Loop Mode: Off';
+                    }
+                }
+
+                if (typeof data.volume === 'number' && Number.isFinite(data.volume)) {
+                    const clampedVol = Math.min(1, Math.max(0, data.volume));
+                    htmlAudio.volume = clampedVol;
+                    volumeSlider.value = String(clampedVol);
+                    volumePercentLabel.textContent = Math.round(clampedVol * 100) + '%';
+                }
+
+                if (typeof data.defaultCustomCover === 'string' && data.defaultCustomCover) {
+                    defaultCustomCover = data.defaultCustomCover;
+                }
+
+                if (typeof data.background === 'string' && data.background) {
+                    document.body.style.background = data.background;
+                    document.body.style.backgroundSize = 'cover';
+                    document.body.style.backgroundPosition = 'center';
+                    document.body.style.backgroundAttachment = 'fixed';
+                }
+
+                if (data.panelAlpha !== undefined) {
+                    setPanelTransparency(data.panelAlpha);
+                    if (panelAlphaSlider) {
+                        panelAlphaSlider.value = String(data.panelAlpha);
+                    }
+                }
+
+                if (data.gradColor1 && gradColor1) gradColor1.value = data.gradColor1;
+                if (data.gradColor2 && gradColor2) gradColor2.value = data.gradColor2;
+                if (data.gradAngle && gradAngleSlider) {
+                    gradAngleSlider.value = String(data.gradAngle);
+                    if (gradAngleLabel) gradAngleLabel.textContent = data.gradAngle + '°';
+                }
+
+                if (data.mikuLeft && data.mikuTop && chibiMikuWidget) {
+                    chibiMikuWidget.style.right = 'auto';
+                    chibiMikuWidget.style.bottom = 'auto';
+                    chibiMikuWidget.style.left = data.mikuLeft;
+                    chibiMikuWidget.style.top = data.mikuTop;
+                }
+
+                if (typeof data.customMikuGif === 'string' && data.customMikuGif && mikuGifImg) {
+                    mikuGifImg.src = data.customMikuGif;
+                }
+            } catch (err) {
+                // Ignore corrupted storage data safely
+            }
+        }
 
         function getActivePlaylist() {
             let found = playlists.find(function (p) {
@@ -986,6 +1135,7 @@
                 if (trackId === '__DEFAULT__' || !playlist.length) {
                     defaultCustomCover = dataUrl;
                     currentCoverImg.src = dataUrl;
+                    saveUserPreferences();
                     showToast('Default cover art updated');
                     return;
                 }
@@ -1000,6 +1150,7 @@
                     currentCoverImg.src = dataUrl;
                 }
                 renderPlaylist();
+                saveUserPreferences();
                 showToast('Cover updated for "' + track.title + '"');
             };
             reader.onerror = function () {
@@ -1060,6 +1211,7 @@
             document.body.style.backgroundSize = 'cover';
             document.body.style.backgroundPosition = 'center';
             document.body.style.backgroundAttachment = 'fixed';
+            saveUserPreferences();
         }
 
         function applyCustomBackgroundImage(file) {
@@ -1075,6 +1227,7 @@
                 if (!imgUrl) return;
                 document.body.style.background = 'url("' + imgUrl + '") center / cover fixed no-repeat';
                 closeBgModal();
+                saveUserPreferences();
                 showToast('Custom background applied');
             };
             reader.readAsDataURL(file);
@@ -1088,6 +1241,7 @@
             if (panelAlphaLabel) {
                 panelAlphaLabel.textContent = Math.round(alpha * 100) + '%';
             }
+            saveUserPreferences();
         }
 
         function applyCustomGradientBackground() {
@@ -1098,6 +1252,7 @@
             document.body.style.backgroundSize = 'cover';
             document.body.style.backgroundPosition = 'center';
             document.body.style.backgroundAttachment = 'fixed';
+            saveUserPreferences();
             showToast('Applied custom gradient (' + angle + '°)');
         }
 
@@ -1162,6 +1317,7 @@
             if (wasEmpty) {
                 loadTrack(0, true);
             }
+            saveUserPreferences();
             showToast('Imported ' + files.length + (files.length === 1 ? ' song' : ' songs') + ' to "' + activePl.name + '"');
         }
 
@@ -1186,6 +1342,7 @@
                     if (pl.id === activePlaylistId) return;
                     activePlaylistId = pl.id;
                     loadTrack(getCurrentTrackIndex(), false);
+                    saveUserPreferences();
                 });
                 playlistTabsBar.appendChild(btn);
             });
@@ -1218,6 +1375,7 @@
             activePlaylistId = newId;
             closeNewPlaylistModal();
             loadTrack(0, false);
+            saveUserPreferences();
             showToast('Created playlist "' + trimmed + '"');
         }
 
@@ -1237,6 +1395,7 @@
             });
             activePlaylistId = playlists[0].id;
             loadTrack(getCurrentTrackIndex(), false);
+            saveUserPreferences();
             showToast('Deleted playlist "' + target.name + '"');
         }
 
@@ -1401,6 +1560,7 @@
 
             if (!playlist.length) {
                 loadTrack(0, false);
+                saveUserPreferences();
                 showToast('Removed "' + removed.title + '"');
                 return;
             }
@@ -1414,6 +1574,7 @@
             } else {
                 renderPlaylist();
             }
+            saveUserPreferences();
             showToast('Removed "' + removed.title + '"');
         }
 
@@ -1432,6 +1593,7 @@
             activePl.tracks = [];
             activePl.currentIndex = 0;
             loadTrack(0, false);
+            saveUserPreferences();
             showToast('Cleared all tracks from "' + activePl.name + '"');
         }
 
@@ -1469,6 +1631,39 @@
                 shuffleBtn.classList.add('bg-white', 'text-slate-600', 'border-sky-200');
                 showToast('Shuffle disabled');
             }
+            saveUserPreferences();
+        });
+
+        loopBtn.addEventListener('click', function () {
+            if (loopMode === 'all') {
+                loopMode = 'one';
+                loopOneDot.classList.remove('hidden');
+                loopBtn.title = 'Loop Mode: Loop One';
+                showToast('Looping current song');
+            } else if (loopMode === 'one') {
+                loopMode = 'off';
+                loopOneDot.classList.add('hidden');
+                loopBtn.classList.remove('bg-sky-100', 'text-[#0369A1]', 'border-sky-300');
+                loopBtn.classList.add('bg-white', 'text-slate-600', 'border-sky-200');
+                loopBtn.title = 'Loop Mode: Off';
+                showToast('Loop off');
+            } else {
+                loopMode = 'all';
+                loopOneDot.classList.add('hidden');
+                loopBtn.classList.remove('bg-white', 'text-slate-600', 'border-sky-200');
+                loopBtn.classList.add('bg-sky-100', 'text-[#0369A1]', 'border-sky-300');
+                loopBtn.title = 'Loop Mode: Loop All';
+                showToast('Looping all songs');
+            }
+            saveUserPreferences();
+        });
+
+        volumeSlider.addEventListener('input', function () {
+            const val = parseFloat(volumeSlider.value);
+            htmlAudio.volume = val;
+            htmlAudio.muted = val === 0;
+            volumePercentLabel.textContent = Math.round(val * 100) + '%';
+            saveUserPreferences();
         });
 
         loopBtn.addEventListener('click', function () {
@@ -1674,6 +1869,7 @@
                     currentArtist.textContent = track.artist;
                 }
                 renderPlaylist();
+                saveUserPreferences();
                 showToast('Updated song details');
             }
             closeEditModal();
@@ -1779,6 +1975,7 @@
             const clamped = clampMikuPosition(mikuOriginLeft + dx, mikuOriginTop + dy);
             chibiMikuWidget.style.left = clamped.left + 'px';
             chibiMikuWidget.style.top = clamped.top + 'px';
+            saveUserPreferences();
         });
 
         function finishMikuPointer() {
@@ -1819,6 +2016,7 @@
                     const dataUrl = loadEv.target && loadEv.target.result;
                     if (!dataUrl || !mikuGifImg) return;
                     mikuGifImg.src = dataUrl;
+                    saveUserPreferences();
                     showToast('Custom GIF applied!');
                 };
                 reader.readAsDataURL(file);
@@ -1845,8 +2043,9 @@
         window.addEventListener('resize', resizeVisualizerCanvas);
         window.addEventListener('load', function () {
             htmlAudio.volume = parseFloat(volumeSlider.value) || 0.8;
+            loadSavedPreferences();
             resizeVisualizerCanvas();
-            loadTrack(0, false);
+            loadTrack(getCurrentTrackIndex(), false);
             requestAnimationFrame(drawVisualizer);
         });
     </script>
