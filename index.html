@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MIKU.SYNTH // 01 — Blue &amp; White Music Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --sky-primary: #0284C7;
+            --sky-bright: #38BDF8;
+            --sky-soft: #E0F2FE;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background:
+                radial-gradient(circle at 12% 10%, rgba(56, 189, 248, 0.22), transparent 36%),
+                radial-gradient(circle at 88% 18%, rgba(14, 165, 233, 0.16), transparent 40%),
+                radial-gradient(circle at 50% 90%, rgba(186, 230, 253, 0.45), transparent 45%),
+                linear-gradient(180deg, #F0F9FF 0%, #FFFFFF 52%, #E0F2FE 100%);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: #0F172A;
+            overflow-x: hidden;
+            transition: background 0.3s ease;
+        }
+
+        .font-mono-tech {
+            font-family: 'Space Mono', monospace;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, var(--panel-alpha, 0.88));
+            backdrop-filter: blur(var(--panel-blur, 14px));
+            -webkit-backdrop-filter: blur(var(--panel-blur, 14px));
+            border: 1px solid rgba(186, 230, 253, 0.9);
+            box-shadow: 0 12px 32px -12px rgba(2, 132, 199, 0.16);
+        }
+
+        /* Cute decorative animations */
+        @keyframes twinkle {
+            0%, 100% { transform: scale(0.85) rotate(0deg); opacity: 0.55; }
+            50% { transform: scale(1.15) rotate(15deg); opacity: 1; }
+        }
+
+        @keyframes floatBubble {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .deco-star {
+            animation: twinkle 3.2s ease-in-out infinite;
+        }
+
+        .deco-bubble {
+            animation: floatBubble 4.5s ease-in-out infinite;
+        }
+
+        /* Miku top mascot: stationary (no bounce animation) */
+        @keyframes noteFloat {
+            0% { transform: translateY(6px) scale(0.8); opacity: 0; }
+            25% { opacity: 0.95; }
+            100% { transform: translateY(-26px) scale(1.1); opacity: 0; }
+        }
+
+        #chibiMikuWidget .miku-motion-wrap {
+            transition: transform 0.25s ease;
+        }
+
+        #chibiMikuWidget .miku-gif-img {
+            filter: contrast(1.06) saturate(1.08);
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .music-note {
+            position: absolute;
+            font-size: 14px;
+            font-weight: 700;
+            color: #0284C7;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #chibiMikuWidget.is-playing .note-1 {
+            top: 4px;
+            left: 10px;
+            animation: noteFloat 1.9s ease-out infinite;
+        }
+
+        #chibiMikuWidget.is-playing .note-2 {
+            top: -2px;
+            right: 12px;
+            color: #0EA5E9;
+            animation: noteFloat 2.3s ease-out 0.65s infinite;
+        }
+
+        /* Custom range slider */
+        input[type="range"].sky-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"].sky-slider::-webkit-slider-runnable-track {
+            height: 6px;
+            border-radius: 9999px;
+            background: #BAE6FD;
+        }
+
+        input[type="range"].sky-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 9999px;
+            background: #0284C7;
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+            margin-top: -4.5px;
+            transition: transform 0.15s ease;
+        }
+
+        input[type="range"].sky-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #F0F9FF;
+            border-radius: 9999px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #7DD3FC;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="relative selection:bg-sky-200 selection:text-sky-950">
+    <!-- Cute Background Sky Decorations -->
+    <div class="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true">
+        <svg class="deco-star absolute top-14 left-[8%] w-6 h-6 text-sky-400" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 1L14.8 9.2L23 12L14.8 14.8L12 23L9.2 14.8L1 12L9.2 9.2L12 1Z" />
+        </svg>
+        <svg class="deco-star absolute top-28 right-[12%] w-5 h-5 text-cyan-400" style="animation-delay: 0.9s;" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 1L14.8 9.2L23 12L14.8 14.8L12 23L9.2 14.8L1 12L9.2 9.2L12 1Z" />
+        </svg>
+        <svg class="deco-star absolute bottom-32 left-[14%] w-5 h-5 text-sky-300" style="animation-delay: 1.6s;" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 1L14.8 9.2L23 12L14.8 14.8L12 23L9.2 14.8L1 12L9.2 9.2L12 1Z" />
+        </svg>
+        <div class="deco-bubble absolute top-44 left-[4%] w-4 h-4 rounded-full bg-sky-200/75 border border-white"></div>
+        <div class="deco-bubble absolute top-20 right-[26%] w-3 h-3 rounded-full bg-cyan-200/80 border border-white" style="animation-delay: 1.2s;"></div>
+        <div class="deco-bubble absolute bottom-44 right-[20%] w-5 h-5 rounded-full bg-sky-200/60 border border-white" style="animation-delay: 2.1s;"></div>
+    </div>
+
+    <!-- Main App Container -->
+    <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-28">
+        <!-- Top Header -->
+        <header class="glass-panel rounded-3xl p-4 sm:p-6 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white flex items-center justify-center shadow-md shadow-sky-500/25 shrink-0">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-2v13M9 19a2 2 0 11-4 0 2 2 0 014 0zm12-2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="font-mono-tech text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                            MIKU<span class="text-[#0284C7]">.SYNTH</span> <span class="text-slate-400 font-normal">//</span> <span class="text-[#0369A1]">01</span>
+                        </h1>
+                        <span class="text-xs px-2.5 py-0.5 rounded-full bg-sky-50 text-[#0284C7] border border-sky-200 font-medium">
+                            &#10024; Sky &amp; White
+                        </span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-slate-600 mt-0.5">
+                        Import your own songs, customize every track's cover art, and vibe with Miku.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap items-center gap-2.5">
+                <label for="audioFileInput" class="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0284C7] to-[#0EA5E9] hover:from-[#0369A1] hover:to-[#0284C7] text-white text-sm font-semibold shadow-md shadow-sky-500/25 transition active:scale-[0.99]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Import Songs</span>
+                </label>
+                <input id="audioFileInput" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac" multiple class="hidden" />
+
+                <button id="openBgModalBtn" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-sky-50 text-slate-700 border border-sky-200 text-sm font-medium transition" title="Change Page Background">
+                    <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>Background</span>
+                </button>
+
+                <button id="clearPlaylistBtn" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-sky-50 text-slate-700 border border-sky-200 text-sm font-medium transition">
+                    <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Clear All</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <!-- Left Column: Now Playing Deck & Visualizer -->
+            <section class="lg:col-span-5 glass-panel rounded-3xl p-5 sm:p-6 relative">
+                <!-- Cute Negi Charm Badge -->
+                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-[11px] font-mono-tech text-[#0369A1] mb-4">
+                    <svg class="w-3.5 h-3.5 text-emerald-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.8 4.2a1.5 1.5 0 00-2.1 0L7.5 14.4l-2.1-2.1-1.4 1.4 3.5 3.5 1.4-1.4-1.4-1.4L17.7 4.2l2.1 2.1 1.4-1.4-1.4-1.4z" />
+                    </svg>
+                    <span>NOW PLAYING DECK</span>
+                </div>
+
+                <!-- Cover Art Dropzone -->
+                <div id="coverDropZone" class="group relative aspect-square w-full max-w-[300px] mx-auto rounded-2xl overflow-hidden border-2 border-sky-200 bg-sky-50 shadow-inner cursor-pointer mb-5" title="Click or drag an image to set custom cover art">
+                    <img id="currentCoverImg" src="" alt="Track cover art" class="w-full h-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+                    <div class="absolute inset-0 bg-slate-950/55 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center text-white p-4 text-center">
+                        <svg class="w-7 h-7 mb-1.5 text-sky-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span class="text-xs font-semibold">Change Cover Art</span>
+                        <span class="text-[11px] text-sky-200 mt-0.5">Click or drop image</span>
+                    </div>
+                </div>
+
+                <!-- Track Info & Quick Actions -->
+                <div class="flex items-start justify-between gap-3 mb-4">
+                    <div class="min-w-0">
+                        <h2 id="currentTitle" class="text-lg sm:text-xl font-bold text-slate-900 truncate">No Songs in Playlist</h2>
+                        <p id="currentArtist" class="text-xs sm:text-sm text-slate-500 truncate">Import audio files to start listening</p>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button id="changeCurrentCoverBtn" type="button" class="p-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-[#0284C7] border border-sky-200 transition" title="Upload Cover Art">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                        <button id="editCurrentTrackBtn" type="button" class="p-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-[#0284C7] border border-sky-200 transition" title="Edit Song Title & Artist">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Slider -->
+                <div class="mb-4">
+                    <input id="seekSlider" type="range" min="0" max="100" value="0" step="0.1" class="sky-slider w-full" />
+                    <div class="flex items-center justify-between text-[11px] font-mono-tech text-slate-500 mt-1">
+                        <span id="currentTimeLabel">0:00</span>
+                        <span id="durationLabel">0:00</span>
+                    </div>
+                </div>
+
+                <!-- Transport Controls -->
+                <div class="flex items-center justify-center gap-2.5 sm:gap-3 mb-5">
+                    <button id="shuffleBtn" type="button" class="p-2.5 rounded-xl bg-white hover:bg-sky-50 text-slate-600 border border-sky-200 transition" title="Shuffle">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+                        </svg>
+                    </button>
+
+                    <button id="prevBtn" type="button" class="p-3 rounded-xl bg-white hover:bg-sky-50 text-slate-800 border border-sky-200 transition" title="Previous Track">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                        </svg>
+                    </button>
+
+                    <button id="playPauseBtn" type="button" class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0284C7] to-[#0EA5E9] hover:from-[#0369A1] hover:to-[#0284C7] text-white flex items-center justify-center shadow-lg shadow-sky-500/30 transition active:scale-95" title="Play / Pause">
+                        <svg id="playIcon" class="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                        <svg id="pauseIcon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                        </svg>
+                    </button>
+
+                    <button id="nextBtn" type="button" class="p-3 rounded-xl bg-white hover:bg-sky-50 text-slate-800 border border-sky-200 transition" title="Next Track">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                        </svg>
+                    </button>
+
+                    <button id="loopBtn" type="button" class="p-2.5 rounded-xl bg-sky-100 text-[#0369A1] border border-sky-300 transition relative" title="Loop Mode: Loop All">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3" />
+                        </svg>
+                        <span id="loopOneDot" class="hidden absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#0284C7] text-white text-[9px] font-bold flex items-center justify-center">1</span>
+                    </button>
+                </div>
+
+                <!-- Volume Control -->
+                <div class="flex items-center gap-3 px-1 mb-4">
+                    <button id="muteBtn" type="button" class="text-slate-600 hover:text-[#0284C7] transition" title="Mute / Unmute">
+                        <svg id="volumeIcon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                    </button>
+                    <input id="volumeSlider" type="range" min="0" max="1" step="0.01" value="0.8" class="sky-slider flex-1" />
+                    <span id="volumePercentLabel" class="text-[11px] font-mono-tech text-slate-500 w-9 text-right">80%</span>
+                </div>
+
+                <!-- Frequency Visualizer -->
+                <div class="rounded-2xl bg-sky-50/90 border border-sky-200/80 p-3">
+                    <div class="flex items-center justify-between text-[10px] font-mono-tech text-sky-700 mb-1.5">
+                        <span>WAVEFORM MONITOR</span>
+                        <span id="statusIndicator">IDLE</span>
+                    </div>
+                    <canvas id="visualizerCanvas" class="w-full h-16 rounded-xl block"></canvas>
+                </div>
+            </section>
+
+            <!-- Right Column: Drop Zone & Playlist -->
+            <section class="lg:col-span-7 glass-panel rounded-3xl p-5 sm:p-6">
+                <!-- Audio Drop Zone -->
+                <div id="audioDropZone" class="rounded-2xl border-2 border-dashed border-sky-300 bg-sky-50/75 hover:bg-sky-100/70 transition p-4 sm:p-5 mb-5 text-center cursor-pointer">
+                    <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white text-[#0284C7] border border-sky-200 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                        </div>
+                        <div class="text-center sm:text-left">
+                            <p class="text-sm font-semibold text-slate-800">Drop your MP3, WAV, OGG, or M4A songs here</p>
+                            <p class="text-xs text-slate-500">Or click to browse files from your device — add custom covers anytime</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Playlist Header & Search -->
+                <div class="flex flex-col gap-3 mb-4">
+                    <!-- Custom Playlists Switcher Bar -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-sky-100">
+                        <div id="playlistTabsBar" class="flex flex-wrap items-center gap-1.5"></div>
+                        <div class="flex items-center gap-1.5">
+                            <button id="newPlaylistBtn" type="button" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-[#0284C7] border border-sky-200 text-xs font-semibold transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                                </svg>
+                                <span>New Playlist</span>
+                            </button>
+                            <button id="deletePlaylistBtn" type="button" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-sky-200 text-xs font-medium transition" title="Delete Active Playlist">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                <span>Delete</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <h2 id="activePlaylistHeading" class="text-lg font-bold text-slate-900">Main Playlist</h2>
+                            <span id="trackCountBadge" class="text-xs font-mono-tech px-2.5 py-0.5 rounded-full bg-sky-100 text-[#0369A1] border border-sky-200 font-semibold">0 Tracks</span>
+                        </div>
+
+                        <div class="relative w-full sm:w-60">
+                            <input id="searchInput" type="text" placeholder="Search songs or artists..." class="w-full pl-9 pr-3.5 py-2 rounded-xl bg-white border border-sky-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/50 focus:border-[#0284C7] transition" />
+                            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Playlist Items List -->
+                <div id="playlistContainer" class="space-y-2.5 max-h-[500px] overflow-y-auto pr-1 custom-scroll"></div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Create Playlist Modal -->
+    <div id="newPlaylistModal" class="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-xs hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl border border-sky-200 shadow-2xl w-full max-w-md p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-slate-900">Create New Playlist</h3>
+                <button id="closeNewPlaylistModalBtn" type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <form id="newPlaylistForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Playlist Name</label>
+                    <input id="newPlaylistNameInput" type="text" required placeholder="e.g. Miku Classics, Night Drive..." class="w-full px-3.5 py-2 rounded-xl border border-sky-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400" />
+                </div>
+                <div class="flex items-center justify-end gap-2.5 pt-2">
+                    <button id="cancelNewPlaylistModalBtn" type="button" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#0284C7] hover:bg-[#0369A1] transition">Create Playlist</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Hidden Cover File Input -->
+    <input id="coverFileInput" type="file" accept="image/*" class="hidden" />
+
+    <!-- Hidden Background Image File Input -->
+    <input id="bgFileInput" type="file" accept="image/*" class="hidden" />
+
+    <!-- Background Picker Modal -->
+    <div id="bgPickerModal" class="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-xs hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl border border-sky-200 shadow-2xl w-full max-w-md p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-slate-900">Customize Background</h3>
+                <button id="closeBgModalBtn" type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Blue &amp; White Presets</p>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button type="button" data-bg-preset="sky" class="bg-preset-btn flex items-center gap-2.5 p-2.5 rounded-xl border border-sky-200 hover:border-[#0284C7] hover:bg-sky-50 text-left transition">
+                            <span class="w-7 h-7 rounded-lg shrink-0 border border-sky-300" style="background: linear-gradient(180deg, #F0F9FF 0%, #FFFFFF 52%, #E0F2FE 100%);"></span>
+                            <span class="text-xs font-semibold text-slate-800">Default Sky</span>
+                        </button>
+                        <button type="button" data-bg-preset="ocean" class="bg-preset-btn flex items-center gap-2.5 p-2.5 rounded-xl border border-sky-200 hover:border-[#0284C7] hover:bg-sky-50 text-left transition">
+                            <span class="w-7 h-7 rounded-lg shrink-0 border border-sky-300" style="background: linear-gradient(135deg, #BAE6FD 0%, #FFFFFF 55%, #7DD3FC 100%);"></span>
+                            <span class="text-xs font-semibold text-slate-800">Breezy Cyan</span>
+                        </button>
+                        <button type="button" data-bg-preset="frost" class="bg-preset-btn flex items-center gap-2.5 p-2.5 rounded-xl border border-sky-200 hover:border-[#0284C7] hover:bg-sky-50 text-left transition">
+                            <span class="w-7 h-7 rounded-lg shrink-0 border border-sky-300" style="background: linear-gradient(160deg, #FFFFFF 0%, #E0F2FE 65%, #38BDF8 100%);"></span>
+                            <span class="text-xs font-semibold text-slate-800">Pure Frost</span>
+                        </button>
+                        <button type="button" data-bg-preset="midnight" class="bg-preset-btn flex items-center gap-2.5 p-2.5 rounded-xl border border-sky-200 hover:border-[#0284C7] hover:bg-sky-50 text-left transition">
+                            <span class="w-7 h-7 rounded-lg shrink-0 border border-sky-700" style="background: linear-gradient(180deg, #0C4A6E 0%, #0284C7 60%, #E0F2FE 100%);"></span>
+                            <span class="text-xs font-semibold text-slate-800">Deep Blue</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-1 border-t border-sky-100">
+                    <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                        <span>Card / Panel Transparency</span>
+                        <span id="panelAlphaLabel" class="font-mono-tech text-[#0284C7]">88%</span>
+                    </div>
+                    <input id="panelAlphaSlider" type="range" min="0" max="1" step="0.02" value="0.88" class="sky-slider w-full" />
+                    <p class="text-[11px] text-slate-500 mt-1">Slide left to make the cards transparent and reveal more of your background.</p>
+                </div>
+
+                <div class="pt-1 border-t border-sky-100 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-600">Custom Gradient</p>
+                        <span id="gradAngleLabel" class="text-[11px] font-mono-tech text-slate-500">135°</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <label class="flex items-center justify-between px-3 py-2 rounded-xl border border-sky-200 bg-sky-50/50 text-xs font-medium text-slate-700 cursor-pointer">
+                            <span>Color 1</span>
+                            <input id="gradColor1" type="color" value="#38BDF8" class="w-6 h-6 rounded cursor-pointer border-0 bg-transparent" />
+                        </label>
+                        <label class="flex items-center justify-between px-3 py-2 rounded-xl border border-sky-200 bg-sky-50/50 text-xs font-medium text-slate-700 cursor-pointer">
+                            <span>Color 2</span>
+                            <input id="gradColor2" type="color" value="#FFFFFF" class="w-6 h-6 rounded cursor-pointer border-0 bg-transparent" />
+                        </label>
+                    </div>
+                    <input id="gradAngleSlider" type="range" min="0" max="360" step="1" value="135" class="sky-slider w-full" />
+                    <button id="applyCustomGradBtn" type="button" class="w-full py-2 px-4 rounded-xl bg-sky-100 hover:bg-sky-200 text-[#0369A1] border border-sky-300 text-xs font-semibold transition">
+                        Apply Custom Gradient
+                    </button>
+                </div>
+
+                <div class="pt-1 border-t border-sky-100">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Custom Image</p>
+                    <button id="uploadBgImageBtn" type="button" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#0284C7] to-[#0EA5E9] hover:from-[#0369A1] hover:to-[#0284C7] text-white text-sm font-semibold shadow-sm transition">
+                        Upload Background Image
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Song Modal -->
+    <div id="editSongModal" class="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-xs hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl border border-sky-200 shadow-2xl w-full max-w-md p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-slate-900">Edit Song Details</h3>
+                <button id="closeEditModalBtn" type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <form id="editSongForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Song Title</label>
+                    <input id="editTitleInput" type="text" required class="w-full px-3.5 py-2 rounded-xl border border-sky-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400" />
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Artist / Producer</label>
+                    <input id="editArtistInput" type="text" required class="w-full px-3.5 py-2 rounded-xl border border-sky-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400" />
+                </div>
+                <div class="flex items-center justify-end gap-2.5 pt-2">
+                    <button id="cancelEditModalBtn" type="button" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#0284C7] hover:bg-[#0369A1] transition">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification Banner -->
+    <div id="toastBanner" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-2xl bg-slate-900/90 text-white text-xs font-mono-tech shadow-lg opacity-0 translate-y-2 pointer-events-none transition duration-200"></div>
+
+    <!-- Top Corner Miku (WMDv.gif — stationary at top, no bounce) -->
+    <div id="chibiMikuWidget" class="fixed top-4 right-4 sm:right-7 z-40 select-none touch-none" title="Drag to move or click Miku to Play / Pause">
+        <div class="relative flex flex-col items-end">
+            <span class="music-note note-1">&#9835;</span>
+            <span class="music-note note-2">&#9834;</span>
+
+            <div class="miku-motion-wrap relative rounded-2xl p-1 bg-white/75 hover:bg-white/95 border border-sky-200/90 shadow-lg shadow-sky-500/15 backdrop-blur-xs transition">
+                <button id="mikuMascotBtn" type="button" class="block rounded-xl cursor-grab active:cursor-grabbing focus:outline-none">
+                    <img
+                        id="mikuGifImg"
+                        src="https://i.gifer.com/WMDv.gif"
+                        alt="Hatsune Miku"
+                        class="miku-gif-img w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-xl"
+                    />
+                </button>
+                <button id="uploadMikuGifBtn" type="button" class="mt-1 w-full py-0.5 px-2 rounded-lg bg-sky-50 hover:bg-sky-100 text-[#0369A1] border border-sky-200 text-[10px] font-mono-tech font-semibold transition cursor-pointer" title="Upload Your Own GIF">
+                    Upload GIF
+                </button>
+            </div>
+            <input id="mikuGifFileInput" type="file" accept="image/gif,image/*" class="hidden" />
+
+            <div id="mikuSpeechBubble" class="mt-1.5 px-3 py-1 rounded-2xl bg-white/95 border border-sky-200 text-[11px] font-mono-tech text-[#0369A1] shadow-md whitespace-nowrap">
+                Ready for songs~
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate clean SVG cover artwork without external dependencies
+        function createDefaultCoverSVG(title, badge, c1, c2, tag) {
+            const safeTitle = String(title || 'MIKU.SYNTH').slice(0, 22).replace(/[<>&"]/g, '');
+            const safeBadge = String(badge || 'SKY EDITION').slice(0, 20).replace(/[<>&"]/g, '');
+            const safeC1 = c1 || '#0284C7';
+            const safeC2 = c2 || '#38BDF8';
+            const safeTag = String(tag || '01').slice(0, 5).replace(/[<>&"]/g, '');
+            const svg =
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">' +
+                '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+                '<stop offset="0%" stop-color="' + safeC1 + '" />' +
+                '<stop offset="100%" stop-color="' + safeC2 + '" />' +
+                '</linearGradient></defs>' +
+                '<rect width="400" height="400" rx="36" fill="url(#g)" />' +
+                '<circle cx="325" cy="82" r="56" fill="#FFFFFF" fill-opacity="0.14" />' +
+                '<circle cx="78" cy="322" r="74" fill="#FFFFFF" fill-opacity="0.12" />' +
+                '<text x="32" y="54" fill="#FFFFFF" font-family="Space Mono, monospace" font-size="16" font-weight="700" opacity="0.9">' + safeTag + '</text>' +
+                '<text x="32" y="210" fill="#FFFFFF" font-family="Inter, sans-serif" font-size="30" font-weight="800">' + safeTitle + '</text>' +
+                '<text x="32" y="246" fill="#E0F2FE" font-family="Space Mono, monospace" font-size="13" font-weight="700">' + safeBadge + '</text>' +
+                '</svg>';
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        }
+
+        let toastTimer = null;
+        function showToast(message) {
+            const toastBanner = document.getElementById('toastBanner');
+            if (!toastBanner) return;
+            toastBanner.textContent = String(message || '');
+            toastBanner.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+            toastBanner.classList.add('opacity-100', 'translate-y-0');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () {
+                toastBanner.classList.remove('opacity-100', 'translate-y-0');
+                toastBanner.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+            }, 2400);
+        }
+
+        function formatTime(seconds) {
+            const total = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+            const mins = Math.floor(total / 60);
+            const secs = total % 60;
+            return mins + ':' + (secs < 10 ? '0' : '') + secs;
+        }
+
+        // Application state (multiple playlists, starting with 0 songs)
+        let playlists = [
+            { id: 'pl-main', name: 'Main Playlist', tracks: [], currentIndex: 0 }
+        ];
+        let activePlaylistId = 'pl-main';
+        let isPlaying = false;
+        let isShuffle = false;
+        let loopMode = 'all'; // 'all' | 'one' | 'off'
+        let editingTrackId = null;
+        let coverTargetTrackId = null;
+        let defaultCustomCover = null;
+
+        function getActivePlaylist() {
+            let found = playlists.find(function (p) {
+                return p.id === activePlaylistId;
+            });
+            if (!found && playlists.length) {
+                found = playlists[0];
+                activePlaylistId = found.id;
+            }
+            if (!found) {
+                found = { id: 'pl-main', name: 'Main Playlist', tracks: [], currentIndex: 0 };
+                playlists = [found];
+                activePlaylistId = found.id;
+            }
+            return found;
+        }
+
+        function getCurrentTracks() {
+            return getActivePlaylist().tracks;
+        }
+
+        function getCurrentTrackIndex() {
+            const pl = getActivePlaylist();
+            if (!pl.tracks.length) {
+                pl.currentIndex = 0;
+                return 0;
+            }
+            if (pl.currentIndex < 0 || pl.currentIndex >= pl.tracks.length) {
+                pl.currentIndex = 0;
+            }
+            return pl.currentIndex;
+        }
+
+        function setCurrentTrackIndex(idx) {
+            const pl = getActivePlaylist();
+            pl.currentIndex = idx;
+        }
+
+        // DOM references
+        const htmlAudio = new Audio();
+        htmlAudio.preload = 'metadata';
+
+        const currentCoverImg = document.getElementById('currentCoverImg');
+        const coverDropZone = document.getElementById('coverDropZone');
+        const coverFileInput = document.getElementById('coverFileInput');
+        const changeCurrentCoverBtn = document.getElementById('changeCurrentCoverBtn');
+        const editCurrentTrackBtn = document.getElementById('editCurrentTrackBtn');
+
+        const currentTitle = document.getElementById('currentTitle');
+        const currentArtist = document.getElementById('currentArtist');
+        const seekSlider = document.getElementById('seekSlider');
+        const currentTimeLabel = document.getElementById('currentTimeLabel');
+        const durationLabel = document.getElementById('durationLabel');
+
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        const loopBtn = document.getElementById('loopBtn');
+        const loopOneDot = document.getElementById('loopOneDot');
+
+        const muteBtn = document.getElementById('muteBtn');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumePercentLabel = document.getElementById('volumePercentLabel');
+
+        const audioFileInput = document.getElementById('audioFileInput');
+        const audioDropZone = document.getElementById('audioDropZone');
+        const clearPlaylistBtn = document.getElementById('clearPlaylistBtn');
+        const searchInput = document.getElementById('searchInput');
+        const trackCountBadge = document.getElementById('trackCountBadge');
+        const playlistContainer = document.getElementById('playlistContainer');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const playlistTabsBar = document.getElementById('playlistTabsBar');
+        const activePlaylistHeading = document.getElementById('activePlaylistHeading');
+        const newPlaylistBtn = document.getElementById('newPlaylistBtn');
+        const deletePlaylistBtn = document.getElementById('deletePlaylistBtn');
+        const newPlaylistModal = document.getElementById('newPlaylistModal');
+        const closeNewPlaylistModalBtn = document.getElementById('closeNewPlaylistModalBtn');
+        const cancelNewPlaylistModalBtn = document.getElementById('cancelNewPlaylistModalBtn');
+        const newPlaylistForm = document.getElementById('newPlaylistForm');
+        const newPlaylistNameInput = document.getElementById('newPlaylistNameInput');
+
+        // Background modal elements
+        const openBgModalBtn = document.getElementById('openBgModalBtn');
+        const bgPickerModal = document.getElementById('bgPickerModal');
+        const closeBgModalBtn = document.getElementById('closeBgModalBtn');
+        const uploadBgImageBtn = document.getElementById('uploadBgImageBtn');
+        const bgFileInput = document.getElementById('bgFileInput');
+        const panelAlphaSlider = document.getElementById('panelAlphaSlider');
+        const panelAlphaLabel = document.getElementById('panelAlphaLabel');
+        const gradColor1 = document.getElementById('gradColor1');
+        const gradColor2 = document.getElementById('gradColor2');
+        const gradAngleSlider = document.getElementById('gradAngleSlider');
+        const gradAngleLabel = document.getElementById('gradAngleLabel');
+        const applyCustomGradBtn = document.getElementById('applyCustomGradBtn');
+
+        // Edit song modal elements
+        const editSongModal = document.getElementById('editSongModal');
+        const closeEditModalBtn = document.getElementById('closeEditModalBtn');
+        const cancelEditModalBtn = document.getElementById('cancelEditModalBtn');
+        const editSongForm = document.getElementById('editSongForm');
+        const editTitleInput = document.getElementById('editTitleInput');
+        const editArtistInput = document.getElementById('editArtistInput');
+
+        // Corner Miku mascot elements
+        const chibiMikuWidget = document.getElementById('chibiMikuWidget');
+        const mikuMascotBtn = document.getElementById('mikuMascotBtn');
+        const mikuSpeechBubble = document.getElementById('mikuSpeechBubble');
+        const mikuGifImg = document.getElementById('mikuGifImg');
+        const uploadMikuGifBtn = document.getElementById('uploadMikuGifBtn');
+        const mikuGifFileInput = document.getElementById('mikuGifFileInput');
+        const visualizerCanvas = document.getElementById('visualizerCanvas');
+        const visCtx = visualizerCanvas ? visualizerCanvas.getContext('2d') : null;
+        let audioCtx = null;
+        let analyser = null;
+        let dataArray = null;
+        let sourceConnected = false;
+
+        function setupAudioAnalyser() {
+            try {
+                if (!audioCtx) {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContextClass) return;
+                    audioCtx = new AudioContextClass();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                if (!sourceConnected) {
+                    const source = audioCtx.createMediaElementSource(htmlAudio);
+                    analyser = audioCtx.createAnalyser();
+                    analyser.fftSize = 128;
+                    source.connect(analyser);
+                    analyser.connect(audioCtx.destination);
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    sourceConnected = true;
+                }
+            } catch (err) {
+                // Fallback gently if Web Audio is restricted
+            }
+        }
+
+        function resizeVisualizerCanvas() {
+            if (!visualizerCanvas) return;
+            const rect = visualizerCanvas.getBoundingClientRect();
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            visualizerCanvas.width = Math.max(1, Math.floor(rect.width * dpr));
+            visualizerCanvas.height = Math.max(1, Math.floor(rect.height * dpr));
+        }
+
+        function drawVisualizer() {
+            requestAnimationFrame(drawVisualizer);
+            if (!visCtx || !visualizerCanvas) return;
+
+            const w = visualizerCanvas.width;
+            const h = visualizerCanvas.height;
+            visCtx.clearRect(0, 0, w, h);
+
+            const barCount = 32;
+            const gap = Math.max(2, Math.floor(w / (barCount * 4)));
+            const barWidth = Math.max(2, Math.floor((w - gap * (barCount - 1)) / barCount));
+
+            if (isPlaying && analyser && dataArray) {
+                analyser.getByteFrequencyData(dataArray);
+            }
+
+            for (let i = 0; i < barCount; i++) {
+                let norm = 0.12;
+                if (isPlaying && analyser && dataArray) {
+                    const idx = Math.min(dataArray.length - 1, Math.floor((i / barCount) * dataArray.length));
+                    norm = Math.max(0.12, dataArray[idx] / 255);
+                } else if (isPlaying) {
+                    const t = performance.now() * 0.005;
+                    norm = 0.25 + 0.55 * Math.abs(Math.sin(t + i * 0.42));
+                }
+
+                const barH = Math.max(4, Math.floor(norm * (h - 6)));
+                const x = i * (barWidth + gap);
+                const y = h - barH;
+
+                const grad = visCtx.createLinearGradient(0, y, 0, h);
+                grad.addColorStop(0, '#38BDF8');
+                grad.addColorStop(1, '#0284C7');
+                visCtx.fillStyle = grad;
+
+                visCtx.beginPath();
+                if (typeof visCtx.roundRect === 'function') {
+                    visCtx.roundRect(x, y, barWidth, barH, 4);
+                } else {
+                    visCtx.rect(x, y, barWidth, barH);
+                }
+                visCtx.fill();
+            }
+        }
+
+        function updateMikuVibeState() {
+            if (!chibiMikuWidget || !mikuSpeechBubble) return;
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            if (isPlaying) {
+                chibiMikuWidget.classList.add('is-playing');
+                const track = playlist[currentIndex];
+                mikuSpeechBubble.textContent = track ? 'Vibe: ' + track.title.slice(0, 16) : 'Playing~';
+            } else {
+                chibiMikuWidget.classList.remove('is-playing');
+                mikuSpeechBubble.textContent = playlist.length ? 'Paused~' : 'Ready for songs~';
+            }
+        }
+
+        function updatePlayPauseUI() {
+            const playlist = getCurrentTracks();
+            if (isPlaying) {
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+                statusIndicator.textContent = 'PLAYING';
+            } else {
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+                statusIndicator.textContent = playlist.length ? 'PAUSED' : 'IDLE';
+            }
+            updateMikuVibeState();
+        }
+
+        function updateProgressUI(current, total) {
+            const safeCur = Number.isFinite(current) && current > 0 ? current : 0;
+            const safeDur = Number.isFinite(total) && total > 0 ? total : 0;
+            currentTimeLabel.textContent = formatTime(safeCur);
+            durationLabel.textContent = formatTime(safeDur);
+            if (!seekSlider.dataset.dragging) {
+                seekSlider.value = safeDur > 0 ? String((safeCur / safeDur) * 100) : '0';
+            }
+        }
+
+        function loadTrack(index, autoPlay) {
+            const shouldAutoPlay = Boolean(autoPlay);
+            const playlist = getCurrentTracks();
+            htmlAudio.pause();
+            if (!playlist.length) {
+                setCurrentTrackIndex(0);
+                currentCoverImg.src = defaultCustomCover || createDefaultCoverSVG('No Songs Yet', '0 SONGS IN QUEUE', '#0284C7', '#38BDF8', '00');
+                currentTitle.textContent = 'No Songs in Playlist';
+                currentArtist.textContent = 'Import audio files to start listening';
+                htmlAudio.removeAttribute('src');
+                updateProgressUI(0, 0);
+                isPlaying = false;
+                updatePlayPauseUI();
+                renderPlaylist();
+                return;
+            }
+
+            const normalizedIndex = ((index % playlist.length) + playlist.length) % playlist.length;
+            setCurrentTrackIndex(normalizedIndex);
+            const track = playlist[normalizedIndex];
+            currentCoverImg.src = track.cover || defaultCustomCover || createDefaultCoverSVG(track.title, 'LOCAL AUDIO', '#0284C7', '#38BDF8', String(normalizedIndex + 1).padStart(2, '0'));
+            currentTitle.textContent = track.title;
+            currentArtist.textContent = track.artist;
+            htmlAudio.src = track.src;
+            htmlAudio.load();
+            updateProgressUI(0, track.duration || 0);
+            renderPlaylist();
+
+            if (shouldAutoPlay) {
+                playCurrentTrack();
+            } else {
+                isPlaying = false;
+                updatePlayPauseUI();
+            }
+        }
+
+        function playCurrentTrack() {
+            const playlist = getCurrentTracks();
+            if (!playlist.length) {
+                showToast('Import a song first to play music.');
+                return;
+            }
+            if (!htmlAudio.getAttribute('src')) {
+                loadTrack(getCurrentTrackIndex(), true);
+                return;
+            }
+            setupAudioAnalyser();
+            const playPromise = htmlAudio.play();
+            if (playPromise && typeof playPromise.then === 'function') {
+                playPromise.then(function () {
+                    isPlaying = true;
+                    updatePlayPauseUI();
+                }).catch(function () {
+                    isPlaying = false;
+                    updatePlayPauseUI();
+                });
+            } else {
+                isPlaying = true;
+                updatePlayPauseUI();
+            }
+        }
+
+        function pauseCurrentTrack() {
+            htmlAudio.pause();
+            isPlaying = false;
+            updatePlayPauseUI();
+        }
+
+        function togglePlayPause() {
+            if (isPlaying) {
+                pauseCurrentTrack();
+            } else {
+                playCurrentTrack();
+            }
+        }
+
+        function getNextIndex() {
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            if (!playlist.length) return 0;
+            if (isShuffle && playlist.length > 1) {
+                let nextIdx = currentIndex;
+                while (nextIdx === currentIndex) {
+                    nextIdx = Math.floor(Math.random() * playlist.length);
+                }
+                return nextIdx;
+            }
+            return (currentIndex + 1) % playlist.length;
+        }
+
+        function getPrevIndex() {
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            if (!playlist.length) return 0;
+            if (htmlAudio.currentTime > 3) {
+                return currentIndex;
+            }
+            if (isShuffle && playlist.length > 1) {
+                let prevIdx = currentIndex;
+                while (prevIdx === currentIndex) {
+                    prevIdx = Math.floor(Math.random() * playlist.length);
+                }
+                return prevIdx;
+            }
+            return (currentIndex - 1 + playlist.length) % playlist.length;
+        }
+
+        function openCoverPickerForTrack(trackId) {
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            if (trackId) {
+                coverTargetTrackId = trackId;
+            } else if (playlist[currentIndex]) {
+                coverTargetTrackId = playlist[currentIndex].id;
+            } else {
+                coverTargetTrackId = '__DEFAULT__';
+            }
+            coverFileInput.value = '';
+            coverFileInput.click();
+        }
+
+        function applyCoverToTrack(trackId, file) {
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            if (!file) {
+                showToast('No image file selected.');
+                return;
+            }
+            const isImage = (file.type && file.type.indexOf('image/') === 0) || /\.(png|jpe?g|gif|webp|bmp|avif|svg)$/i.test(file.name || '');
+            if (!isImage) {
+                showToast('Please select an image file (PNG, JPG, GIF, WEBP).');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                const dataUrl = ev.target && ev.target.result;
+                if (!dataUrl) {
+                    showToast('Could not read the selected image.');
+                    return;
+                }
+
+                if (trackId === '__DEFAULT__' || !playlist.length) {
+                    defaultCustomCover = dataUrl;
+                    currentCoverImg.src = dataUrl;
+                    showToast('Default cover art updated');
+                    return;
+                }
+
+                const track = playlist.find(function (item) {
+                    return item.id === trackId;
+                }) || playlist[currentIndex];
+                if (!track) return;
+
+                track.cover = dataUrl;
+                if (playlist[currentIndex] && playlist[currentIndex].id === track.id) {
+                    currentCoverImg.src = dataUrl;
+                }
+                renderPlaylist();
+                showToast('Cover updated for "' + track.title + '"');
+            };
+            reader.onerror = function () {
+                showToast('Error loading image file.');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function openEditModalForTrack(trackId) {
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            const track = playlist.find(function (item) {
+                return item.id === trackId;
+            }) || playlist[currentIndex];
+            if (!track) {
+                showToast('Import a song first to edit its details.');
+                return;
+            }
+            editingTrackId = track.id;
+            editTitleInput.value = track.title;
+            editArtistInput.value = track.artist;
+            editSongModal.classList.remove('hidden');
+            editSongModal.classList.add('flex');
+            editTitleInput.focus();
+        }
+
+        function closeEditModal() {
+            editingTrackId = null;
+            editSongModal.classList.add('hidden');
+            editSongModal.classList.remove('flex');
+        }
+
+        function openBgModal() {
+            bgPickerModal.classList.remove('hidden');
+            bgPickerModal.classList.add('flex');
+        }
+
+        function closeBgModal() {
+            bgPickerModal.classList.add('hidden');
+            bgPickerModal.classList.remove('flex');
+        }
+
+        function applyBgPreset(preset) {
+            document.body.style.backgroundImage = '';
+            if (preset === 'ocean') {
+                document.body.style.background = 'radial-gradient(circle at 20% 15%, rgba(56, 189, 248, 0.35), transparent 42%), linear-gradient(135deg, #BAE6FD 0%, #FFFFFF 55%, #7DD3FC 100%)';
+                showToast('Background set to Breezy Cyan');
+            } else if (preset === 'frost') {
+                document.body.style.background = 'radial-gradient(circle at 80% 15%, rgba(125, 211, 252, 0.35), transparent 45%), linear-gradient(160deg, #FFFFFF 0%, #E0F2FE 65%, #38BDF8 100%)';
+                showToast('Background set to Pure Frost');
+            } else if (preset === 'midnight') {
+                document.body.style.background = 'radial-gradient(circle at 50% 10%, rgba(56, 189, 248, 0.35), transparent 45%), linear-gradient(180deg, #0C4A6E 0%, #0284C7 60%, #E0F2FE 100%)';
+                showToast('Background set to Deep Blue');
+            } else {
+                document.body.style.background = 'radial-gradient(circle at 12% 10%, rgba(56, 189, 248, 0.22), transparent 36%), radial-gradient(circle at 88% 18%, rgba(14, 165, 233, 0.16), transparent 40%), radial-gradient(circle at 50% 90%, rgba(186, 230, 253, 0.45), transparent 45%), linear-gradient(180deg, #F0F9FF 0%, #FFFFFF 52%, #E0F2FE 100%)';
+                showToast('Background reset to Default Sky');
+            }
+            document.body.style.backgroundSize = 'cover';
+            document.body.style.backgroundPosition = 'center';
+            document.body.style.backgroundAttachment = 'fixed';
+        }
+
+        function applyCustomBackgroundImage(file) {
+            if (!file) return;
+            const isImage = (file.type && file.type.indexOf('image/') === 0) || /\.(png|jpe?g|gif|webp|bmp|avif)$/i.test(file.name || '');
+            if (!isImage) {
+                showToast('Please select a valid image file for the background.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                const imgUrl = ev.target && ev.target.result;
+                if (!imgUrl) return;
+                document.body.style.background = 'url("' + imgUrl + '") center / cover fixed no-repeat';
+                closeBgModal();
+                showToast('Custom background applied');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setPanelTransparency(alphaValue) {
+            const parsed = parseFloat(alphaValue);
+            const alpha = Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 0.88;
+            document.documentElement.style.setProperty('--panel-alpha', String(alpha));
+            document.documentElement.style.setProperty('--panel-blur', alpha < 0.25 ? '4px' : '14px');
+            if (panelAlphaLabel) {
+                panelAlphaLabel.textContent = Math.round(alpha * 100) + '%';
+            }
+        }
+
+        function applyCustomGradientBackground() {
+            const c1 = (gradColor1 && gradColor1.value) || '#38BDF8';
+            const c2 = (gradColor2 && gradColor2.value) || '#FFFFFF';
+            const angle = (gradAngleSlider && gradAngleSlider.value) || '135';
+            document.body.style.background = 'linear-gradient(' + angle + 'deg, ' + c1 + ' 0%, ' + c2 + ' 100%)';
+            document.body.style.backgroundSize = 'cover';
+            document.body.style.backgroundPosition = 'center';
+            document.body.style.backgroundAttachment = 'fixed';
+            showToast('Applied custom gradient (' + angle + '°)');
+        }
+
+        function importAudioFiles(fileList) {
+            const activePl = getActivePlaylist();
+            const playlist = activePl.tracks;
+            if (!fileList || !fileList.length) return;
+            const files = Array.from(fileList).filter(function (f) {
+                return (f.type && f.type.indexOf('audio/') === 0) || /\.(mp3|wav|ogg|m4a|flac|aac|webm)$/i.test(f.name || '');
+            });
+            if (!files.length) {
+                showToast('No supported audio files found.');
+                return;
+            }
+
+            const wasEmpty = playlist.length === 0;
+            const startNumber = playlist.length;
+
+            files.forEach(function (file, idx) {
+                const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim() || 'Imported Track';
+                let title = cleanName;
+                let artist = 'Local Audio File';
+
+                const dashParts = cleanName.split(' - ');
+                if (dashParts.length >= 2) {
+                    artist = dashParts[0].trim() || artist;
+                    title = dashParts.slice(1).join(' - ').trim() || title;
+                }
+
+                const objectUrl = URL.createObjectURL(file);
+                const numLabel = String(startNumber + idx + 1).padStart(2, '0');
+                const trackId = 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+
+                const newTrack = {
+                    id: trackId,
+                    title: title,
+                    artist: artist,
+                    duration: 0,
+                    src: objectUrl,
+                    cover: defaultCustomCover || createDefaultCoverSVG(title, 'LOCAL AUDIO', '#0284C7', '#38BDF8', numLabel)
+                };
+
+                // Probe audio metadata duration safely
+                const probe = new Audio();
+                probe.preload = 'metadata';
+                probe.src = objectUrl;
+                probe.addEventListener('loadedmetadata', function () {
+                    if (Number.isFinite(probe.duration) && probe.duration > 0) {
+                        newTrack.duration = probe.duration;
+                        const curIdx = getCurrentTrackIndex();
+                        if (activePl.id === activePlaylistId && activePl.tracks[curIdx] && activePl.tracks[curIdx].id === newTrack.id && !htmlAudio.duration) {
+                            updateProgressUI(htmlAudio.currentTime, newTrack.duration);
+                        }
+                        renderPlaylist();
+                    }
+                });
+
+                playlist.push(newTrack);
+            });
+
+            renderPlaylist();
+            if (wasEmpty) {
+                loadTrack(0, true);
+            }
+            showToast('Imported ' + files.length + (files.length === 1 ? ' song' : ' songs') + ' to "' + activePl.name + '"');
+        }
+
+        function renderPlaylistTabs() {
+            if (!playlistTabsBar) return;
+            const activePl = getActivePlaylist();
+            if (activePlaylistHeading) {
+                activePlaylistHeading.textContent = activePl.name;
+            }
+            playlistTabsBar.innerHTML = '';
+            playlists.forEach(function (pl) {
+                const isSelected = pl.id === activePl.id;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className =
+                    'px-3 py-1 rounded-xl text-xs font-semibold border transition ' +
+                    (isSelected
+                        ? 'bg-[#0284C7] text-white border-[#0284C7] shadow-xs'
+                        : 'bg-white text-slate-600 hover:bg-sky-50 border-sky-200');
+                btn.textContent = pl.name + ' (' + pl.tracks.length + ')';
+                btn.addEventListener('click', function () {
+                    if (pl.id === activePlaylistId) return;
+                    activePlaylistId = pl.id;
+                    loadTrack(getCurrentTrackIndex(), false);
+                });
+                playlistTabsBar.appendChild(btn);
+            });
+        }
+
+        function openNewPlaylistModal() {
+            if (!newPlaylistModal) return;
+            newPlaylistNameInput.value = '';
+            newPlaylistModal.classList.remove('hidden');
+            newPlaylistModal.classList.add('flex');
+            newPlaylistNameInput.focus();
+        }
+
+        function closeNewPlaylistModal() {
+            if (!newPlaylistModal) return;
+            newPlaylistModal.classList.add('hidden');
+            newPlaylistModal.classList.remove('flex');
+        }
+
+        function createCustomPlaylist(name) {
+            const trimmed = String(name || '').trim();
+            if (!trimmed) return;
+            const newId = 'pl-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+            playlists.push({
+                id: newId,
+                name: trimmed,
+                tracks: [],
+                currentIndex: 0
+            });
+            activePlaylistId = newId;
+            closeNewPlaylistModal();
+            loadTrack(0, false);
+            showToast('Created playlist "' + trimmed + '"');
+        }
+
+        function deleteActivePlaylist() {
+            if (playlists.length <= 1) {
+                showToast('Keep at least one playlist.');
+                return;
+            }
+            const target = getActivePlaylist();
+            target.tracks.forEach(function (t) {
+                if (t.src && t.src.indexOf('blob:') === 0) {
+                    try { URL.revokeObjectURL(t.src); } catch (e) {}
+                }
+            });
+            playlists = playlists.filter(function (p) {
+                return p.id !== target.id;
+            });
+            activePlaylistId = playlists[0].id;
+            loadTrack(getCurrentTrackIndex(), false);
+            showToast('Deleted playlist "' + target.name + '"');
+        }
+
+        function renderPlaylist() {
+            renderPlaylistTabs();
+            const activePl = getActivePlaylist();
+            const playlist = activePl.tracks;
+            const currentIndex = getCurrentTrackIndex();
+            const query = (searchInput.value || '').trim().toLowerCase();
+            trackCountBadge.textContent = playlist.length + (playlist.length === 1 ? ' Track' : ' Tracks');
+
+            if (!playlist.length) {
+                playlistContainer.innerHTML =
+                    '<div class="rounded-2xl border border-sky-200 bg-sky-50/70 p-8 text-center">' +
+                    '<p class="text-sm font-semibold text-slate-800 mb-1">"' + activePl.name.replace(/[<>&"]/g, '') + '" is empty (0 songs)</p>' +
+                    '<p class="text-xs text-slate-500">Click "Import Songs" or drop audio files above to add tracks to this playlist.</p>' +
+                    '</div>';
+                return;
+            }
+
+            const filtered = playlist
+                .map(function (track, idx) {
+                    return { track: track, idx: idx };
+                })
+                .filter(function (entry) {
+                    if (!query) return true;
+                    return (
+                        entry.track.title.toLowerCase().indexOf(query) !== -1 ||
+                        entry.track.artist.toLowerCase().indexOf(query) !== -1
+                    );
+                });
+
+            if (!filtered.length) {
+                playlistContainer.innerHTML =
+                    '<div class="rounded-2xl border border-sky-200 bg-sky-50/60 p-6 text-center text-xs text-slate-500">' +
+                    'No songs match "' + query.replace(/[<>&"]/g, '') + '".' +
+                    '</div>';
+                return;
+            }
+
+            playlistContainer.innerHTML = '';
+            filtered.forEach(function (entry) {
+                const track = entry.track;
+                const idx = entry.idx;
+                const isActive = idx === currentIndex;
+
+                const row = document.createElement('div');
+                row.className =
+                    'flex items-center justify-between gap-3 p-2.5 sm:p-3 rounded-2xl border transition cursor-pointer ' +
+                    (isActive
+                        ? 'bg-sky-100/90 border-sky-400 shadow-xs'
+                        : 'bg-white/90 hover:bg-sky-50/80 border-sky-100');
+
+                row.addEventListener('click', function () {
+                    if (idx === getCurrentTrackIndex()) {
+                        togglePlayPause();
+                    } else {
+                        loadTrack(idx, true);
+                    }
+                });
+
+                const left = document.createElement('div');
+                left.className = 'flex items-center gap-3 min-w-0 flex-1';
+
+                const thumbBtn = document.createElement('button');
+                thumbBtn.type = 'button';
+                thumbBtn.title = 'Change cover for ' + track.title;
+                thumbBtn.className = 'relative w-12 h-12 rounded-xl overflow-hidden border border-sky-200 shrink-0 group/thumb focus:outline-none';
+                thumbBtn.addEventListener('click', function (ev) {
+                    ev.stopPropagation();
+                    openCoverPickerForTrack(track.id);
+                });
+
+                const thumbImg = document.createElement('img');
+                thumbImg.src = track.cover;
+                thumbImg.alt = track.title;
+                thumbImg.className = 'w-full h-full object-cover';
+
+                const thumbOverlay = document.createElement('span');
+                thumbOverlay.className = 'absolute inset-0 bg-slate-900/50 text-white text-[9px] font-bold opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition';
+                thumbOverlay.textContent = 'COVER';
+
+                thumbBtn.appendChild(thumbImg);
+                thumbBtn.appendChild(thumbOverlay);
+
+                const meta = document.createElement('div');
+                meta.className = 'min-w-0 flex-1';
+
+                const titleEl = document.createElement('p');
+                titleEl.className = 'text-sm font-semibold truncate ' + (isActive ? 'text-[#0369A1]' : 'text-slate-900');
+                titleEl.textContent = track.title;
+
+                const artistEl = document.createElement('p');
+                artistEl.className = 'text-xs text-slate-500 truncate';
+                artistEl.textContent = track.artist;
+
+                meta.appendChild(titleEl);
+                meta.appendChild(artistEl);
+
+                left.appendChild(thumbBtn);
+                left.appendChild(meta);
+
+                const right = document.createElement('div');
+                right.className = 'flex items-center gap-1.5 shrink-0';
+
+                const durEl = document.createElement('span');
+                durEl.className = 'text-[11px] font-mono-tech text-slate-500 mr-1 hidden sm:inline';
+                durEl.textContent = formatTime(track.duration);
+
+                const coverBtn = document.createElement('button');
+                coverBtn.type = 'button';
+                coverBtn.title = 'Upload Cover Art';
+                coverBtn.className = 'p-1.5 rounded-lg text-slate-500 hover:text-[#0284C7] hover:bg-sky-100/80 transition';
+                coverBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>';
+                coverBtn.addEventListener('click', function (ev) {
+                    ev.stopPropagation();
+                    openCoverPickerForTrack(track.id);
+                });
+
+                const editBtn = document.createElement('button');
+                editBtn.type = 'button';
+                editBtn.title = 'Edit Title & Artist';
+                editBtn.className = 'p-1.5 rounded-lg text-slate-500 hover:text-[#0284C7] hover:bg-sky-100/80 transition';
+                editBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>';
+                editBtn.addEventListener('click', function (ev) {
+                    ev.stopPropagation();
+                    openEditModalForTrack(track.id);
+                });
+
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.title = 'Remove Track';
+                delBtn.className = 'p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition';
+                delBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>';
+                delBtn.addEventListener('click', function (ev) {
+                    ev.stopPropagation();
+                    removeTrackAt(idx);
+                });
+
+                right.appendChild(durEl);
+                right.appendChild(coverBtn);
+                right.appendChild(editBtn);
+                right.appendChild(delBtn);
+
+                row.appendChild(left);
+                row.appendChild(right);
+                playlistContainer.appendChild(row);
+            });
+        }
+
+        function removeTrackAt(idx) {
+            const activePl = getActivePlaylist();
+            const playlist = activePl.tracks;
+            let currentIndex = getCurrentTrackIndex();
+            if (idx < 0 || idx >= playlist.length) return;
+            const removed = playlist[idx];
+            if (removed && removed.src && removed.src.indexOf('blob:') === 0) {
+                try { URL.revokeObjectURL(removed.src); } catch (e) {}
+            }
+            const wasPlaying = isPlaying && idx === currentIndex;
+            playlist.splice(idx, 1);
+
+            if (!playlist.length) {
+                loadTrack(0, false);
+                showToast('Removed "' + removed.title + '"');
+                return;
+            }
+
+            if (idx < currentIndex) {
+                currentIndex -= 1;
+                setCurrentTrackIndex(currentIndex);
+                renderPlaylist();
+            } else if (idx === currentIndex) {
+                loadTrack(currentIndex % playlist.length, wasPlaying);
+            } else {
+                renderPlaylist();
+            }
+            showToast('Removed "' + removed.title + '"');
+        }
+
+        function clearAllTracks() {
+            const activePl = getActivePlaylist();
+            const playlist = activePl.tracks;
+            if (!playlist.length) {
+                showToast('Playlist is already empty.');
+                return;
+            }
+            playlist.forEach(function (t) {
+                if (t.src && t.src.indexOf('blob:') === 0) {
+                    try { URL.revokeObjectURL(t.src); } catch (e) {}
+                }
+            });
+            activePl.tracks = [];
+            activePl.currentIndex = 0;
+            loadTrack(0, false);
+            showToast('Cleared all tracks from "' + activePl.name + '"');
+        }
+
+        // Event wiring
+        newPlaylistBtn.addEventListener('click', openNewPlaylistModal);
+        deletePlaylistBtn.addEventListener('click', deleteActivePlaylist);
+        closeNewPlaylistModalBtn.addEventListener('click', closeNewPlaylistModal);
+        cancelNewPlaylistModalBtn.addEventListener('click', closeNewPlaylistModal);
+        newPlaylistModal.addEventListener('click', function (ev) {
+            if (ev.target === newPlaylistModal) closeNewPlaylistModal();
+        });
+        newPlaylistForm.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            createCustomPlaylist(newPlaylistNameInput.value);
+        });
+
+        playPauseBtn.addEventListener('click', togglePlayPause);
+        prevBtn.addEventListener('click', function () {
+            if (!getCurrentTracks().length) return;
+            loadTrack(getPrevIndex(), isPlaying);
+        });
+        nextBtn.addEventListener('click', function () {
+            if (!getCurrentTracks().length) return;
+            loadTrack(getNextIndex(), isPlaying);
+        });
+
+        shuffleBtn.addEventListener('click', function () {
+            isShuffle = !isShuffle;
+            if (isShuffle) {
+                shuffleBtn.classList.remove('bg-white', 'text-slate-600', 'border-sky-200');
+                shuffleBtn.classList.add('bg-sky-100', 'text-[#0369A1]', 'border-sky-300');
+                showToast('Shuffle enabled');
+            } else {
+                shuffleBtn.classList.remove('bg-sky-100', 'text-[#0369A1]', 'border-sky-300');
+                shuffleBtn.classList.add('bg-white', 'text-slate-600', 'border-sky-200');
+                showToast('Shuffle disabled');
+            }
+        });
+
+        loopBtn.addEventListener('click', function () {
+            if (loopMode === 'all') {
+                loopMode = 'one';
+                loopOneDot.classList.remove('hidden');
+                loopBtn.title = 'Loop Mode: Loop One';
+                showToast('Looping current song');
+            } else if (loopMode === 'one') {
+                loopMode = 'off';
+                loopOneDot.classList.add('hidden');
+                loopBtn.classList.remove('bg-sky-100', 'text-[#0369A1]', 'border-sky-300');
+                loopBtn.classList.add('bg-white', 'text-slate-600', 'border-sky-200');
+                loopBtn.title = 'Loop Mode: Off';
+                showToast('Loop off');
+            } else {
+                loopMode = 'all';
+                loopOneDot.classList.add('hidden');
+                loopBtn.classList.remove('bg-white', 'text-slate-600', 'border-sky-200');
+                loopBtn.classList.add('bg-sky-100', 'text-[#0369A1]', 'border-sky-300');
+                loopBtn.title = 'Loop Mode: Loop All';
+                showToast('Looping all songs');
+            }
+        });
+
+        volumeSlider.addEventListener('input', function () {
+            const val = parseFloat(volumeSlider.value);
+            htmlAudio.volume = val;
+            htmlAudio.muted = val === 0;
+            volumePercentLabel.textContent = Math.round(val * 100) + '%';
+        });
+
+        muteBtn.addEventListener('click', function () {
+            htmlAudio.muted = !htmlAudio.muted;
+            if (htmlAudio.muted) {
+                volumePercentLabel.textContent = '0%';
+            } else {
+                volumePercentLabel.textContent = Math.round(htmlAudio.volume * 100) + '%';
+            }
+        });
+
+        seekSlider.addEventListener('input', function () {
+            seekSlider.dataset.dragging = '1';
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            const dur = htmlAudio.duration || (playlist[currentIndex] && playlist[currentIndex].duration) || 0;
+            if (dur > 0) {
+                const previewSec = (parseFloat(seekSlider.value) / 100) * dur;
+                currentTimeLabel.textContent = formatTime(previewSec);
+            }
+        });
+
+        seekSlider.addEventListener('change', function () {
+            delete seekSlider.dataset.dragging;
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            const dur = htmlAudio.duration || (playlist[currentIndex] && playlist[currentIndex].duration) || 0;
+            if (dur > 0) {
+                htmlAudio.currentTime = (parseFloat(seekSlider.value) / 100) * dur;
+            }
+        });
+
+        htmlAudio.addEventListener('loadedmetadata', function () {
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            if (playlist[currentIndex] && Number.isFinite(htmlAudio.duration) && htmlAudio.duration > 0) {
+                playlist[currentIndex].duration = htmlAudio.duration;
+                renderPlaylist();
+            }
+            updateProgressUI(htmlAudio.currentTime, htmlAudio.duration);
+        });
+
+        htmlAudio.addEventListener('timeupdate', function () {
+            updateProgressUI(htmlAudio.currentTime, htmlAudio.duration);
+        });
+
+        htmlAudio.addEventListener('ended', function () {
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            if (!playlist.length) return;
+            if (loopMode === 'one') {
+                htmlAudio.currentTime = 0;
+                playCurrentTrack();
+            } else if (loopMode === 'all' || currentIndex < playlist.length - 1 || isShuffle) {
+                loadTrack(getNextIndex(), true);
+            } else {
+                isPlaying = false;
+                updatePlayPauseUI();
+            }
+        });
+
+        htmlAudio.addEventListener('pause', function () {
+            isPlaying = false;
+            updatePlayPauseUI();
+        });
+
+        htmlAudio.addEventListener('play', function () {
+            isPlaying = true;
+            updatePlayPauseUI();
+        });
+
+        // Audio file import & drag-and-drop
+        audioFileInput.addEventListener('change', function (ev) {
+            importAudioFiles(ev.target.files);
+            audioFileInput.value = '';
+        });
+
+        audioDropZone.addEventListener('click', function () {
+            audioFileInput.click();
+        });
+
+        audioDropZone.addEventListener('dragover', function (ev) {
+            ev.preventDefault();
+            audioDropZone.classList.add('bg-sky-100', 'border-[#0284C7]');
+        });
+
+        audioDropZone.addEventListener('dragleave', function () {
+            audioDropZone.classList.remove('bg-sky-100', 'border-[#0284C7]');
+        });
+
+        audioDropZone.addEventListener('drop', function (ev) {
+            ev.preventDefault();
+            audioDropZone.classList.remove('bg-sky-100', 'border-[#0284C7]');
+            if (ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files.length) {
+                importAudioFiles(ev.dataTransfer.files);
+            }
+        });
+
+        clearPlaylistBtn.addEventListener('click', clearAllTracks);
+        searchInput.addEventListener('input', renderPlaylist);
+
+        // Cover art controls & drag-and-drop
+        changeCurrentCoverBtn.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            openCoverPickerForTrack(playlist[currentIndex] ? playlist[currentIndex].id : '__DEFAULT__');
+        });
+
+        coverDropZone.addEventListener('click', function () {
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            openCoverPickerForTrack(playlist[currentIndex] ? playlist[currentIndex].id : '__DEFAULT__');
+        });
+
+        coverDropZone.addEventListener('dragover', function (ev) {
+            ev.preventDefault();
+            coverDropZone.classList.add('ring-2', 'ring-[#0284C7]');
+        });
+
+        coverDropZone.addEventListener('dragleave', function () {
+            coverDropZone.classList.remove('ring-2', 'ring-[#0284C7]');
+        });
+
+        coverDropZone.addEventListener('drop', function (ev) {
+            ev.preventDefault();
+            coverDropZone.classList.remove('ring-2', 'ring-[#0284C7]');
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            const file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+            if (file) {
+                applyCoverToTrack(playlist[currentIndex] ? playlist[currentIndex].id : '__DEFAULT__', file);
+            }
+        });
+
+        coverFileInput.addEventListener('change', function (ev) {
+            const file = ev.target && ev.target.files && ev.target.files[0];
+            if (file) {
+                applyCoverToTrack(coverTargetTrackId, file);
+            }
+            coverFileInput.value = '';
+        });
+
+        // Edit song modal wiring
+        editCurrentTrackBtn.addEventListener('click', function () {
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            if (playlist[currentIndex]) {
+                openEditModalForTrack(playlist[currentIndex].id);
+            } else {
+                showToast('Import a song first to edit its details.');
+            }
+        });
+
+        closeEditModalBtn.addEventListener('click', closeEditModal);
+        cancelEditModalBtn.addEventListener('click', closeEditModal);
+        editSongModal.addEventListener('click', function (ev) {
+            if (ev.target === editSongModal) closeEditModal();
+        });
+
+        editSongForm.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            const playlist = getCurrentTracks();
+            const currentIndex = getCurrentTrackIndex();
+            const track = playlist.find(function (t) {
+                return t.id === editingTrackId;
+            });
+            if (track) {
+                track.title = editTitleInput.value.trim() || track.title;
+                track.artist = editArtistInput.value.trim() || track.artist;
+                if (playlist[currentIndex] && playlist[currentIndex].id === track.id) {
+                    currentTitle.textContent = track.title;
+                    currentArtist.textContent = track.artist;
+                }
+                renderPlaylist();
+                showToast('Updated song details');
+            }
+            closeEditModal();
+        });
+
+        // Background modal wiring
+        openBgModalBtn.addEventListener('click', openBgModal);
+        closeBgModalBtn.addEventListener('click', closeBgModal);
+        bgPickerModal.addEventListener('click', function (ev) {
+            if (ev.target === bgPickerModal) closeBgModal();
+        });
+
+        document.querySelectorAll('.bg-preset-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const preset = btn.getAttribute('data-bg-preset');
+                applyBgPreset(preset);
+            });
+        });
+
+        if (panelAlphaSlider) {
+            panelAlphaSlider.addEventListener('input', function () {
+                setPanelTransparency(panelAlphaSlider.value);
+            });
+        }
+
+        if (gradAngleSlider) {
+            gradAngleSlider.addEventListener('input', function () {
+                if (gradAngleLabel) {
+                    gradAngleLabel.textContent = gradAngleSlider.value + '°';
+                }
+            });
+        }
+
+        if (applyCustomGradBtn) {
+            applyCustomGradBtn.addEventListener('click', applyCustomGradientBackground);
+        }
+
+        uploadBgImageBtn.addEventListener('click', function () {
+            bgFileInput.value = '';
+            bgFileInput.click();
+        });
+
+        bgFileInput.addEventListener('change', function (ev) {
+            const file = ev.target && ev.target.files && ev.target.files[0];
+            if (file) {
+                applyCustomBackgroundImage(file);
+            }
+            bgFileInput.value = '';
+        });
+
+        // Corner Miku drag-to-move, GIF upload, click play/pause & fallback
+        let isDraggingMiku = false;
+        let hasDraggedMiku = false;
+        let mikuDragStartX = 0;
+        let mikuDragStartY = 0;
+        let mikuOriginLeft = 0;
+        let mikuOriginTop = 0;
+
+        function clampMikuPosition(nextLeft, nextTop) {
+            if (!chibiMikuWidget) return { left: 16, top: 16 };
+            const rect = chibiMikuWidget.getBoundingClientRect();
+            const margin = 8;
+            const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+            const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+            return {
+                left: Math.min(maxLeft, Math.max(margin, nextLeft)),
+                top: Math.min(maxTop, Math.max(margin, nextTop))
+            };
+        }
+
+        function ensureMikuExplicitLeftTop() {
+            if (!chibiMikuWidget) return;
+            const rect = chibiMikuWidget.getBoundingClientRect();
+            chibiMikuWidget.style.right = 'auto';
+            chibiMikuWidget.style.bottom = 'auto';
+            chibiMikuWidget.style.left = rect.left + 'px';
+            chibiMikuWidget.style.top = rect.top + 'px';
+        }
+
+        mikuMascotBtn.addEventListener('pointerdown', function (ev) {
+            if (ev.button !== undefined && ev.button !== 0) return;
+            ensureMikuExplicitLeftTop();
+            const rect = chibiMikuWidget.getBoundingClientRect();
+            isDraggingMiku = true;
+            hasDraggedMiku = false;
+            mikuDragStartX = ev.clientX;
+            mikuDragStartY = ev.clientY;
+            mikuOriginLeft = rect.left;
+            mikuOriginTop = rect.top;
+            try {
+                mikuMascotBtn.setPointerCapture(ev.pointerId);
+            } catch (err) {}
+        });
+
+        mikuMascotBtn.addEventListener('pointermove', function (ev) {
+            if (!isDraggingMiku) return;
+            const dx = ev.clientX - mikuDragStartX;
+            const dy = ev.clientY - mikuDragStartY;
+            if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+                hasDraggedMiku = true;
+            }
+            if (!hasDraggedMiku) return;
+            const clamped = clampMikuPosition(mikuOriginLeft + dx, mikuOriginTop + dy);
+            chibiMikuWidget.style.left = clamped.left + 'px';
+            chibiMikuWidget.style.top = clamped.top + 'px';
+        });
+
+        function finishMikuPointer() {
+            if (!isDraggingMiku) return;
+            isDraggingMiku = false;
+            const wasDrag = hasDraggedMiku;
+            setTimeout(function () {
+                hasDraggedMiku = false;
+            }, 0);
+            if (wasDrag) return;
+            if (!getCurrentTracks().length) {
+                showToast('Miku is ready! Import a song to start playing.');
+                return;
+            }
+            togglePlayPause();
+        }
+
+        mikuMascotBtn.addEventListener('pointerup', finishMikuPointer);
+        mikuMascotBtn.addEventListener('pointercancel', finishMikuPointer);
+
+        if (uploadMikuGifBtn && mikuGifFileInput) {
+            uploadMikuGifBtn.addEventListener('click', function (ev) {
+                ev.stopPropagation();
+                mikuGifFileInput.value = '';
+                mikuGifFileInput.click();
+            });
+
+            mikuGifFileInput.addEventListener('change', function (ev) {
+                const file = ev.target && ev.target.files && ev.target.files[0];
+                if (!file) return;
+                const isImg = (file.type && file.type.indexOf('image/') === 0) || /\.(gif|webp|png|jpe?g)$/i.test(file.name || '');
+                if (!isImg) {
+                    showToast('Please select a GIF or image file.');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function (loadEv) {
+                    const dataUrl = loadEv.target && loadEv.target.result;
+                    if (!dataUrl || !mikuGifImg) return;
+                    mikuGifImg.src = dataUrl;
+                    showToast('Custom GIF applied!');
+                };
+                reader.readAsDataURL(file);
+                mikuGifFileInput.value = '';
+            });
+        }
+
+        window.addEventListener('resize', function () {
+            if (!chibiMikuWidget || !chibiMikuWidget.style.left || chibiMikuWidget.style.left === 'auto') return;
+            const curLeft = parseFloat(chibiMikuWidget.style.left) || 0;
+            const curTop = parseFloat(chibiMikuWidget.style.top) || 0;
+            const clamped = clampMikuPosition(curLeft, curTop);
+            chibiMikuWidget.style.left = clamped.left + 'px';
+            chibiMikuWidget.style.top = clamped.top + 'px';
+        });
+
+        if (mikuGifImg) {
+            mikuGifImg.addEventListener('error', function () {
+                mikuGifImg.src = createDefaultCoverSVG('MIKU', 'WMDv', '#0284C7', '#38BDF8', '01');
+            });
+        }
+
+        // Window resize & initial boot
+        window.addEventListener('resize', resizeVisualizerCanvas);
+        window.addEventListener('load', function () {
+            htmlAudio.volume = parseFloat(volumeSlider.value) || 0.8;
+            resizeVisualizerCanvas();
+            loadTrack(0, false);
+            requestAnimationFrame(drawVisualizer);
+        });
+    </script>
+</body>
+</html>
