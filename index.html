@@ -14,6 +14,8 @@
             --sky-bright: #38BDF8;
             --sky-soft: #E0F2FE;
             --panel-alpha: 0.88;
+            --subwidget-alpha: 0.8096;
+            --track-active-alpha: 0.96;
             --panel-blur: 14px;
             --panel-rgb: 255, 255, 255;
             --subwidget-rgb: 240, 249, 255;
@@ -84,7 +86,7 @@
         }
 
         .subwidget-box {
-            background: rgba(var(--subwidget-rgb), Math.min(1, calc(var(--panel-alpha, 0.88) * 0.92)));
+            background: rgba(var(--subwidget-rgb), var(--subwidget-alpha, 0.8096));
             border-color: var(--track-border-hex);
         }
 
@@ -103,7 +105,7 @@
         }
 
         .playlist-track-row.is-current-track {
-            background: rgba(var(--track-active-rgb), Math.min(1, calc(var(--panel-alpha, 0.88) + 0.08)));
+            background: rgba(var(--track-active-rgb), var(--track-active-alpha, 0.96));
             border: 1.5px solid #38BDF8;
             box-shadow: 0 4px 14px -4px rgba(2, 132, 199, 0.25);
         }
@@ -1785,6 +1787,8 @@
             }
             if (typeof styles.panelAlpha === "number") {
                 root.setProperty("--panel-alpha", styles.panelAlpha);
+                root.setProperty("--subwidget-alpha", Math.min(1, styles.panelAlpha * 0.92));
+                root.setProperty("--track-active-alpha", Math.min(1, styles.panelAlpha + 0.08));
                 if (els.panelAlphaSlider) els.panelAlphaSlider.value = styles.panelAlpha;
                 if (els.panelAlphaLabel) els.panelAlphaLabel.textContent = `${Math.round(styles.panelAlpha * 100)}%`;
             }
