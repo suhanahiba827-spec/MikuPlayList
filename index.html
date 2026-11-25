@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MIKU.MUSIC.PLAYER // 01 — &amp; Music Player</title>
+    <title>MIKU MUSIC PLAYER // 01 - Music Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -240,7 +240,7 @@
                 <div>
                     <div class="flex flex-wrap items-center gap-2">
                         <h1 class="header-title-text text-xl sm:text-2xl font-bold tracking-tight">
-                            MIKU<span class="text-[#0284C7]">.SYNTH</span> <span class="opacity-45 font-normal">//</span> <span class="text-[#0369A1]">01</span>
+                            MIKU <span class="text-[#0284C7]">MUSIC PLAYER</span> <span class="opacity-45 font-normal">//</span> <span class="text-[#0369A1]">01</span>
                         </h1>
                     </div>
                     <p class="header-subtitle-text text-xs sm:text-sm mt-0.5">
@@ -538,7 +538,7 @@
 
     <!-- Hidden File Inputs -->
     <input id="coverFileInput" type="file" accept="image/*" class="hidden" />
-    <input id="gifFileInput" type="file" accept="image/gif,image/*" class="hidden" />
+    <input id="gifFileInput" type="file" accept="image/gif,image/webp,image/png,image/jpeg,image/*" class="hidden" />
     <input id="bgFileInput" type="file" accept="image/*" class="hidden" />
 
     <!-- Theme & Background Picker Modal -->
@@ -691,6 +691,20 @@
                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Custom Background Image</p>
                     <button id="uploadBgImageBtn" type="button" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#0284C7] to-[#0EA5E9] hover:from-[#0369A1] hover:to-[#0284C7] text-white text-sm font-semibold shadow-sm transition">
                         Upload Background Image
+                    </button>
+                </div>
+
+                <!-- Floating GIF Upload or URL -->
+                <div class="pt-3 border-t border-sky-100 space-y-2">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-600">Floating GIF Widget</p>
+                    <div class="flex gap-2">
+                        <input id="gifUrlInput" type="url" placeholder="Paste GIF or image URL..." class="flex-1 px-3 py-2 rounded-xl border border-sky-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400" />
+                        <button id="applyGifUrlBtn" type="button" class="px-3 py-2 rounded-xl bg-sky-100 hover:bg-sky-200 text-[#0369A1] border border-sky-300 text-xs font-semibold transition">
+                            Set URL
+                        </button>
+                    </div>
+                    <button id="uploadGifFromModalBtn" type="button" class="w-full py-2 px-4 rounded-xl bg-sky-50 hover:bg-sky-100 text-[#0284C7] border border-sky-200 text-xs font-semibold transition">
+                        Upload GIF / Image File
                     </button>
                 </div>
             </div>
@@ -988,36 +1002,42 @@
             gifFileInput: document.getElementById("gifFileInput"),
             customGifImg: document.getElementById("customGifImg"),
             gifEmptyPrompt: document.getElementById("gifEmptyPrompt"),
-            clearGifBtn: document.getElementById("clearGifBtn")
+            clearGifBtn: document.getElementById("clearGifBtn"),
+            gifUrlInput: document.getElementById("gifUrlInput"),
+            applyGifUrlBtn: document.getElementById("applyGifUrlBtn"),
+            uploadGifFromModalBtn: document.getElementById("uploadGifFromModalBtn")
         };
 
         function onEl(el, event, handler) {
-            if (el) el.addEventListener(event, handler);
+            if (!el) return;
+            el.addEventListener(event, handler);
         }
 
-        // Falling stars generator
         function createFallingStars() {
             if (!els.fallingStarsLayer) return;
             els.fallingStarsLayer.innerHTML = "";
-            const starCount = 24;
-            for (let i = 0; i < starCount; i++) {
-                const span = document.createElement("span");
-                span.className = "falling-star text-sky-400";
-                const leftPct = Math.random() * 100;
-                const sizePx = 12 + Math.random() * 12;
+            const count = 24;
+            for (let i = 0; i < count; i++) {
+                const star = document.createElement("div");
+                star.className = "falling-star";
+                const leftPct = (i / count) * 100 + (Math.random() * 4 - 2);
+                const sizePx = 10 + Math.random() * 10;
                 const durationSec = 7.5 + Math.random() * 7;
                 const delaySec = -(Math.random() * durationSec);
-                const driftPx = -35 + Math.random() * 70;
+                const driftPx = (Math.random() * 80 - 40).toFixed(1) + "px";
                 const opacityVal = (0.45 + Math.random() * 0.45).toFixed(2);
+                const colorHex = i % 2 === 0 ? "#38BDF8" : "#0EA5E9";
 
-                span.style.left = `${leftPct}%`;
-                span.style.fontSize = `${sizePx}px`;
-                span.style.setProperty("--star-duration", `${durationSec}s`);
-                span.style.setProperty("--star-delay", `${delaySec}s`);
-                span.style.setProperty("--star-drift", `${driftPx}px`);
-                span.style.setProperty("--star-opacity", opacityVal);
-                span.textContent = i % 3 === 0 ? "✦" : "★";
-                els.fallingStarsLayer.appendChild(span);
+                star.style.left = `${Math.max(1, Math.min(98, leftPct))}%`;
+                star.style.width = `${sizePx}px`;
+                star.style.height = `${sizePx}px`;
+                star.style.color = colorHex;
+                star.style.setProperty("--star-duration", `${durationSec}s`);
+                star.style.setProperty("--star-delay", `${delaySec}s`);
+                star.style.setProperty("--star-drift", driftPx);
+                star.style.setProperty("--star-opacity", opacityVal);
+                star.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 1L14.8 9.2L23 12L14.8 14.8L12 23L9.2 14.8L1 12L9.2 9.2L12 1Z"/></svg>`;
+                els.fallingStarsLayer.appendChild(star);
             }
         }
 
@@ -1026,13 +1046,28 @@
                 els.fallingStarsLayer.classList.toggle("hidden", !state.fallingStarsEnabled);
             }
             if (els.toggleStarsLabel) {
-                els.toggleStarsLabel.textContent = state.fallingStarsEnabled ? "Stars: ON" : "Stars: OFF";
+                els.toggleStarsLabel.textContent = `Stars: ${state.fallingStarsEnabled ? "ON" : "OFF"}`;
             }
-            if (els.toggleGifWidgetBtn) {
-                els.toggleGifWidgetBtn.textContent = state.gifWidgetEnabled ? "GIF: ON" : "GIF: OFF";
+            if (els.toggleStarsBtn) {
+                els.toggleStarsBtn.classList.toggle("bg-sky-100/90", state.fallingStarsEnabled);
+                els.toggleStarsBtn.classList.toggle("text-[#0369A1]", state.fallingStarsEnabled);
+                els.toggleStarsBtn.classList.toggle("border-sky-300", state.fallingStarsEnabled);
+                els.toggleStarsBtn.classList.toggle("bg-white/80", !state.fallingStarsEnabled);
+                els.toggleStarsBtn.classList.toggle("text-slate-500", !state.fallingStarsEnabled);
+                els.toggleStarsBtn.classList.toggle("border-slate-200", !state.fallingStarsEnabled);
             }
+
             if (els.gifWidget) {
                 els.gifWidget.classList.toggle("hidden", !state.gifWidgetEnabled);
+            }
+            if (els.toggleGifWidgetBtn) {
+                els.toggleGifWidgetBtn.textContent = `GIF: ${state.gifWidgetEnabled ? "ON" : "OFF"}`;
+                els.toggleGifWidgetBtn.classList.toggle("bg-sky-100/90", state.gifWidgetEnabled);
+                els.toggleGifWidgetBtn.classList.toggle("text-[#0369A1]", state.gifWidgetEnabled);
+                els.toggleGifWidgetBtn.classList.toggle("border-sky-300", state.gifWidgetEnabled);
+                els.toggleGifWidgetBtn.classList.toggle("bg-white/80", !state.gifWidgetEnabled);
+                els.toggleGifWidgetBtn.classList.toggle("text-slate-500", !state.gifWidgetEnabled);
+                els.toggleGifWidgetBtn.classList.toggle("border-slate-200", !state.gifWidgetEnabled);
             }
         }
 
@@ -1049,6 +1084,23 @@
                 els.gifEmptyPrompt.classList.remove("hidden");
                 els.clearGifBtn.classList.add("hidden");
             }
+            if (els.gifUrlInput && state.customGifDataUrl && !state.customGifDataUrl.startsWith("data:")) {
+                els.gifUrlInput.value = state.customGifDataUrl;
+            }
+        }
+
+        async function setCustomGifSource(srcValue) {
+            state.customGifDataUrl = (srcValue || "").trim();
+            renderCustomGifUI();
+            await saveMeta("customGifDataUrl", state.customGifDataUrl);
+        }
+
+        function openGifFilePicker() {
+            if (!els.gifFileInput) return;
+            try {
+                els.gifFileInput.value = "";
+            } catch (err) {}
+            els.gifFileInput.click();
         }
 
         // Draggable GIF widget logic (clamped inside viewport, won't trigger click when dragged)
@@ -1057,6 +1109,7 @@
 
             let isDragging = false;
             let movedDuringDrag = false;
+            let pointerDownOnBox = false;
             let startX = 0;
             let startY = 0;
             let origLeft = 0;
@@ -1083,11 +1136,14 @@
                 const rect = els.gifWidget.getBoundingClientRect();
                 isDragging = true;
                 movedDuringDrag = false;
+                pointerDownOnBox = Boolean(e.target.closest("#gifDropBox"));
                 startX = e.clientX;
                 startY = e.clientY;
                 origLeft = rect.left;
                 origTop = rect.top;
-                els.gifWidget.setPointerCapture(e.pointerId);
+                try {
+                    els.gifWidget.setPointerCapture(e.pointerId);
+                } catch (err) {}
             });
 
             els.gifWidget.addEventListener("pointermove", (e) => {
@@ -1115,24 +1171,49 @@
             els.gifWidget.addEventListener("pointerup", async (e) => {
                 if (!isDragging) return;
                 isDragging = false;
-                if (els.gifWidget.hasPointerCapture(e.pointerId)) {
-                    els.gifWidget.releasePointerCapture(e.pointerId);
-                }
-                if (movedDuringDrag && state.gifPosition) {
+                try {
+                    if (els.gifWidget.hasPointerCapture(e.pointerId)) {
+                        els.gifWidget.releasePointerCapture(e.pointerId);
+                    }
+                } catch (err) {}
+
+                const wasClick = pointerDownOnBox && !movedDuringDrag;
+                pointerDownOnBox = false;
+                movedDuringDrag = false;
+
+                if (state.gifPosition) {
                     await saveMeta("gifPosition", state.gifPosition);
+                }
+
+                if (wasClick) {
+                    openGifFilePicker();
                 }
             });
 
-            // Clicking inside the box opens the file uploader if not dragging
-            els.gifDropBox.addEventListener("click", () => {
-                if (movedDuringDrag) {
-                    movedDuringDrag = false;
-                    return;
-                }
-                if (els.gifFileInput) {
-                    els.gifFileInput.value = "";
-                    els.gifFileInput.click();
-                }
+            els.gifWidget.addEventListener("pointercancel", () => {
+                isDragging = false;
+                pointerDownOnBox = false;
+                movedDuringDrag = false;
+            });
+
+            // Also support drag-and-drop of a GIF/image file directly onto the box
+            els.gifDropBox.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                els.gifDropBox.classList.add("ring-2", "ring-sky-400");
+            });
+            els.gifDropBox.addEventListener("dragleave", () => {
+                els.gifDropBox.classList.remove("ring-2", "ring-sky-400");
+            });
+            els.gifDropBox.addEventListener("drop", (e) => {
+                e.preventDefault();
+                els.gifDropBox.classList.remove("ring-2", "ring-sky-400");
+                const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    await setCustomGifSource(ev.target.result);
+                };
+                reader.readAsDataURL(file);
             });
         }
 
@@ -1737,19 +1818,25 @@
             if (!file) return;
             const reader = new FileReader();
             reader.onload = async (ev) => {
-                state.customGifDataUrl = ev.target.result;
-                renderCustomGifUI();
-                await saveMeta("customGifDataUrl", state.customGifDataUrl);
+                await setCustomGifSource(ev.target.result);
             };
             reader.readAsDataURL(file);
-            e.target.value = "";
+            try {
+                e.target.value = "";
+            } catch (err) {}
+        });
+
+        onEl(els.uploadGifFromModalBtn, "click", openGifFilePicker);
+
+        onEl(els.applyGifUrlBtn, "click", async () => {
+            if (!els.gifUrlInput) return;
+            await setCustomGifSource(els.gifUrlInput.value);
         });
 
         onEl(els.clearGifBtn, "click", async (e) => {
             e.stopPropagation();
-            state.customGifDataUrl = "";
-            renderCustomGifUI();
-            await saveMeta("customGifDataUrl", "");
+            if (els.gifUrlInput) els.gifUrlInput.value = "";
+            await setCustomGifSource("");
         });
 
         onEl(els.audioFileInput, "change", (e) => handleFilesImported(e.target.files));
